@@ -23,7 +23,8 @@ BirthDate DATE NOT NULL,
 JoinDate DATE NOT NULL,
 [Current] BIT NOT NULL,
 Notes VARCHAR(MAX)
-CONSTRAINT PK_MemberID PRIMARY KEY (MemberID)
+CONSTRAINT PK_MemberID PRIMARY KEY (MemberID),
+CONSTRAINT CK_PrevJoin CHECK (JoinDate <= GETDATE())
 )
 ;
 
@@ -44,7 +45,8 @@ CREATE TABLE Interests
 (
 InterestID INT IDENTITY(1,1),
 Interest VARCHAR(40) NOT NULL
-CONSTRAINT PK_InterestID PRIMARY KEY (InterestID)
+CONSTRAINT PK_InterestID PRIMARY KEY (InterestID),
+CONSTRAINT UC_Interest UNIQUE (Interest)
 )
 
 CREATE TABLE MemberInterests
@@ -83,6 +85,7 @@ CREATE TABLE [Events]
 EventID INT IDENTITY(1,1),
 EventTitle VARCHAR(100) NOT NULL,
 SpeakerFirstName VARCHAR(20) NOT NULL,
+SpeakerMiddleName VARCHAR(20) NULL,
 SpeakerLastName VARCHAR(20) NOT NULL,
 EventDate DATE NOT NULL
 CONSTRAINT PK_EventID PRIMARY KEY (EventID)
@@ -97,7 +100,7 @@ CONSTRAINT FK_MemberEvents_Members FOREIGN KEY (MemberID) REFERENCES Members(Mem
 CONSTRAINT FK_MemberEvents_Events FOREIGN KEY (EventID) REFERENCES [Events](EventID)
 )
 
-CREATE TABLE PaymentMethod
+CREATE TABLE CardPayment
 (
 CardID INT IDENTITY(1,1),
 MemberID VARCHAR(10),
@@ -106,6 +109,23 @@ CardNumber BIGINT NOT NULL,
 ExpirationDate DATE NOT NULL
 CONSTRAINT PK_CardMemberID PRIMARY KEY (CardID, MemberID),
 CONSTRAINT FK_Payment_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
+)
+
+CREATE TABLE BankPayment
+(
+
+
+
+)
+
+CREATE TABLE OnlinePayment
+(
+
+
+
+
+
+
 )
 
 INSERT Members
@@ -124,3 +144,50 @@ VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', 'bfallon0@artisteer.com', '818
 ('M0013', 'Davina', 'Lira', 'Wither', 'F', 'lwitherc@smugmug.com', '404-495-3676', '12-16-1957', '03-21-2016', 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
 ('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M', 'hdegregoriod@a8.net', '484-717-6750', '10-14-1964', '01-27-2017', 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
 ('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M', 'abirdfielde@over-blog.com', '915-299-3451', '01-09-1983', '10-06-2017', 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
+
+INSERT Interests (Interest)
+VALUES ('Acting'), ('Video Games'), ('Crossword Puzzles'), ('Calligraphy'), ('Movies'), ('Restaurants'), ('Woodworking'), 
+('Juggling'), ('Quilting'), ('Electronics'), ('Sewing'), ('Cooking'), ('Botany'), ('Skating'), ('Dancing'), 
+('Coffee'), ('Foreign Languages'), ('Fashion'), ('Homebrewing'), ('Geneology'), ('Scrapbooking'), ('Surfing'), 
+('Amateur Radio'), ('Computers'), ('Writing'), ('Singing'), ('Reading'), ('Pottery') 
+
+INSERT MemberInterests
+VALUES ('M0001', 1), ('M0001', 2), ('M0001', 3), ('M0002', 4), ('M0003', 5), ('M0003', 6), ('M0003', 7), 
+('M0004', 8), ('M0004', 9), ('M0005', 10), ('M0006', 11), ('M0006', 12), ('M0006', 5), ('M0007', 13), ('M0007', 14), 
+('M0008', 15), ('M0008', 16), ('M0008', 17), ('M0009', 18), ('M0010', 7), ('M0011', 19), ('M0011', 20), ('M0011', 21), 
+('M0011', 5), ('M0012', 22), ('M0012', 23), ('M0013', 24), ('M0014', 25), ('M0014', 26), ('M0015', 27), ('M0015', 28) 
+
+INSERT Addresses
+VALUES ( 'M0001', '020 New Castle Way', NULL, 'Port Washington', 'New York', '11054'), 
+( 'M0002', '8 Corry Parkway', 'P.O. Box 7088', 'Newton', 'Massachusetts', '2458'), 
+( 'M0003', '39426 Stone Corner Drive', NULL, 'Peoria', 'Illinois', '61605'), 
+( 'M0004', '921 Granby Junction', NULL, 'Oklahoma City', 'Oklahoma', '73173'), 
+( 'M0005', '77 Butternut Parkway', NULL, 'Saint Paul', 'Minnesota', '55146'), 
+( 'M0006', '821 Ilene Drive', NULL, 'Odessa', 'Texas', '79764'), 
+( 'M0007', '1110 Johnson Court', NULL, 'Rochester', 'New York', '14624'), 
+( 'M0008', '6 Canary Hill', 'P.O. Box 255', 'Tallahassee', 'Florida', '32309'), 
+( 'M0009', '9 Buhler Lane', NULL, 'Bismarck', 'North Dakota', '58505'), 
+( 'M0010', '99 Northwestern Pass', NULL, 'Midland', 'Texas', '79710'), 
+( 'M0011', '69 Spenser Hill', NULL, 'Provo', 'Utah', '84605'), 
+( 'M0012', '3234 Kings Court', 'P.O. Box 1233', 'Tacoma', 'Washington', '98424'), 
+( 'M0013', '3 Lakewood Gardens Circle', NULL, 'Columbia', 'South Carolina', '29225'), 
+( 'M0014', '198 Muir Parkway', NULL, 'Fairfax', 'Virginia', '22036'), 
+( 'M0015', '258 Jenna Drive', NULL, 'Pensacola', 'Florida', '32520')
+
+INSERT [Events]
+VALUES 
+('The History of Human Emotions', 'Tiffany', 'Watt', 'Smith', '01-12-2017'), 
+('How Great Leaders Inspire Action', 'Simon', NULL, 'Sinek', '02-22-2017'), 
+('The Puzzle of Motivation', 'Dan', NULL, 'Pink', '03-05-2017'), 
+('Your Elusive Creative Genius', 'Elizabeth', NULL, 'Gilbert', '04-16-2017'), 
+('Why are Programmers So Smart?', 'Andrew', NULL, 'Comeau', '05-01-2017') 
+
+INSERT MemberEvents
+VALUES ('M0001', 3), ('M0001', 4), ('M0001', 5), ('M0002', 1), ('M0002', 3), ('M0002', 4), ('M0003', 1), ('M0003', 2), 
+('M0003', 3), ('M0003', 5), ('M0004', 1), ('M0004', 2), ('M0004', 3), ('M0004', 4), ('M0004', 5), ('M0005', 1), 
+('M0005', 2), ('M0005', 3), ('M0005', 4), ('M0006', 1), ('M0006', 3), ('M0006', 4), ('M0007', 2), ('M0007', 3), 
+('M0007', 4), ('M0008', 1), ('M0008', 2), ('M0008', 3), ('M0008', 4), ('M0009', 2), ('M0009', 3), ('M0009', 4), 
+('M0010', 1), ('M0010', 2), ('M0011', 1), ('M0011', 2), ('M0012', 1), ('M0012', 3), ('M0012', 4), ('M0012', 5), 
+('M0013', 1), ('M0013', 2), ('M0013', 5), ('M0014', 2), ('M0014', 3), ('M0014', 4), ('M0015', 1), ('M0015', 2), 
+('M0015', 3), ('M0015', 4)
+
