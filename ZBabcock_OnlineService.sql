@@ -111,22 +111,24 @@ CONSTRAINT PK_CardMemberID PRIMARY KEY (CardID, MemberID),
 CONSTRAINT FK_Payment_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
 )
 
-CREATE TABLE BankPayment
-(
+
+
+--CREATE TABLE BankPayment
+--(BankID INT 
 
 
 
-)
+--)
 
-CREATE TABLE OnlinePayment
-(
-
-
+--CREATE TABLE OnlinePayment
+--(
 
 
 
 
-)
+
+
+--)
 
 INSERT Members
 VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', 'bfallon0@artisteer.com', '818-873-3863', '06-29-1971', '04-07-2017', 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
@@ -191,3 +193,33 @@ VALUES ('M0001', 3), ('M0001', 4), ('M0001', 5), ('M0002', 1), ('M0002', 3), ('M
 ('M0013', 1), ('M0013', 2), ('M0013', 5), ('M0014', 2), ('M0014', 3), ('M0014', 4), ('M0015', 1), ('M0015', 2), 
 ('M0015', 3), ('M0015', 4)
 
+GO
+CREATE FUNCTION [dbo].[fn_EventAttendance]
+(
+@BeginDate DATE,
+@EndDate DATE
+)
+RETURNS TABLE
+AS
+RETURN 
+SELECT EventTitle, COUNT(MemberID) [Attendance]
+FROM MemberEvents ME
+INNER JOIN [Events] E
+ON ME.EventID = E.EventID
+WHERE E.EventDate BETWEEN @BeginDate AND @EndDate
+GROUP BY ME.EventID, E.EventTitle
+
+GO
+
+CREATE PROC sp_MemberBirthdays
+AS
+BEGIN
+SELECT FirstName, MiddleName, LastName, BirthDate
+FROM Members
+WHERE DATEPART(MONTH, BirthDate) = DATEPART(MONTH, GETDATE())
+END
+
+
+EXEC sp_MemberBirthdays
+
+CREATE 
