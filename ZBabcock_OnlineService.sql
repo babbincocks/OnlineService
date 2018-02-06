@@ -24,7 +24,8 @@ JoinDate DATE NOT NULL,
 [Current] BIT NOT NULL,
 Notes VARCHAR(MAX)
 CONSTRAINT PK_MemberID PRIMARY KEY (MemberID),
-CONSTRAINT CK_PrevJoin CHECK (JoinDate <= GETDATE())
+CONSTRAINT CK_PrevJoin CHECK (JoinDate <= GETDATE()),
+CONSTRAINT CK_PrevBirth CHECK (BirthDate < GETDATE())
 )
 ;
 
@@ -37,7 +38,7 @@ BillAddress VARCHAR(50) NULL,
 City VARCHAR(25),
 [State] VARCHAR(20),
 ZIPCode VARCHAR(10)
-CONSTRAINT PK_AddressMemberID PRIMARY KEY (AddressID, MemberID)
+CONSTRAINT PK_AddressID PRIMARY KEY (AddressID)
 CONSTRAINT FK_Addresses_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
 )
 
@@ -102,33 +103,71 @@ CONSTRAINT FK_MemberEvents_Events FOREIGN KEY (EventID) REFERENCES [Events](Even
 
 CREATE TABLE CardPayment
 (
-CardID INT IDENTITY(1,1),
-MemberID VARCHAR(10),
-CardType VARCHAR(100) NOT NULL,
+CardID INT IDENTITY,
+MemberID VARCHAR(10) NOT NULL,
+CardType VARCHAR(60) NOT NULL,
 CardNumber BIGINT NOT NULL,
+SecurityCode SMALLINT NOT NULL,
 ExpirationDate DATE NOT NULL
 CONSTRAINT PK_CardMemberID PRIMARY KEY (CardID, MemberID),
 CONSTRAINT FK_Payment_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
 )
 
 
-
---CREATE TABLE BankPayment
---(BankID INT 
-
-
-
---)
-
---CREATE TABLE OnlinePayment
---(
+CREATE TABLE OtherPayment
+(AccountID INT IDENTITY,
+MemberID VARCHAR(10) NOT NULL,
+AccountType VARCHAR(20) NOT NULL,
+AccountNumber VARCHAR(15) NULL,
+AccountEmail VARCHAR(70) NULL
 
 
+CONSTRAINT PK_AccountID PRIMARY KEY (AccountID),
+CONSTRAINT FK_Other_Members FOREIGN KEY (MemberID) REFERENCES Members (MemberID),
+CONSTRAINT CK_AccountType CHECK (AccountType IN ('Bank', 'PayPal', 'Swipe', 'Google Wallet'))
+)
 
 
 
+CREATE TABLE AccountCharges
+(
+ChargeID INT IDENTITY,
+MemberID VARCHAR(10) NOT NULL,
 
---)
+
+CONSTRAINT PK_ChargeID PRIMARY KEY (ChargeID),
+CONSTRAINT FK_Charges_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
+)
+
+GO
+
+CREATE TRIGGER trg_AccountOnlineEmail
+ON OtherPayment
+AFTER INSERT, UPDATE
+AS
+BEGIN
+	IF EXISTS (SELECT * FROM inserted WHERE AccountType <> 'Bank' AND AccountEmail IS NULL) 
+		BEGIN
+		RAISERROR ('Please insert the E-mail address associated with the online account.', 16, 1)
+		ROLLBACK TRAN
+		END
+
+END
+
+GO
+
+CREATE TRIGGER trg_AccountBankNumber
+ON OtherPayment
+AFTER INSERT, UPDATE
+AS
+BEGIN
+	IF EXISTS (SELECT * FROM inserted WHERE AccountType = 'Bank' AND AccountNumber IS NULL)
+	BEGIN
+	RAISERROR ('Please insert the account number associated with this bank account.', 16, 1)
+	ROLLBACK TRAN
+	END
+
+GO
 
 INSERT Members
 VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', 'bfallon0@artisteer.com', '818-873-3863', '06-29-1971', '04-07-2017', 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
@@ -220,6 +259,42 @@ WHERE DATEPART(MONTH, BirthDate) = DATEPART(MONTH, GETDATE())
 END
 
 
-EXEC sp_MemberBirthdays
+GO
+CREATE VIEW [dbo].[CurrentMemberContact]
+AS
 
-CREATE 
+SELECT M.MemberID, FirstName, MiddleName, LastName, MailAddress, City, [State], ZIPCode, Phone, EMail
+FROM Members M
+INNER JOIN Addresses A
+ON M.MemberID = A.MemberID
+WHERE [Current] <> 0
+
+GO
+
+CREATE PROC sp_NewSignUps
+(
+@BeginDate DATE,
+@EndDate DATE
+)
+AS
+BEGIN
+	--WITH Months AS
+	--(
+	--SELECT @BeginDate AS [Month]
+	--UNION ALL
+	--SELECT DATEADD(MONTH, 1, [Month])
+	--FROM Months
+	--WHERE DATEADD(MONTH, 1, [Month]) <= @EndDate
+
+	--)
+	SELECT COUNT(MemberID), [Month]
+	FROM Members Months
+	WHERE JoinDate BETWEEN @BeginDate AND @EndDate
+	GROUP BY [Month]
+END
+
+GO
+
+EXEC sp_NewSignUps'01-01-2017', '10-31-2017'
+
+--CREATE PROC sp_BillRenewal
