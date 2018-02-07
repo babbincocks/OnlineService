@@ -9,6 +9,13 @@ CREATE DATABASE OnlineService
 GO
 USE OnlineService
 
+CREATE TABLE SubscriptionTypes
+(
+SubID INT IDENTITY(1,1),
+SubType VARCHAR(20) NOT NULL,
+PlanPrice MONEY NOT NULL
+CONSTRAINT PK_SubID PRIMARY KEY (SubID)
+)
 
 CREATE TABLE Members
 (
@@ -21,9 +28,11 @@ EMail VARCHAR(70) NULL,
 Phone VARCHAR(15) NULL,
 BirthDate DATE NOT NULL,
 JoinDate DATE NOT NULL,
+SubscriptionLevel INT NOT NULL,
 [Current] BIT NOT NULL,
 Notes VARCHAR(MAX)
 CONSTRAINT PK_MemberID PRIMARY KEY (MemberID),
+CONSTRAINT FK_Members_Subscriptions FOREIGN KEY (SubscriptionLevel) REFERENCES SubscriptionTypes(SubID),
 CONSTRAINT CK_PrevJoin CHECK (JoinDate <= GETDATE()),
 CONSTRAINT CK_PrevBirth CHECK (BirthDate < GETDATE())
 )
@@ -59,24 +68,15 @@ CONSTRAINT FK_MemberInterests_Members FOREIGN KEY (MemberID) REFERENCES Members(
 CONSTRAINT FK_MemberInterests_Interests FOREIGN KEY (InterestID) REFERENCES Interests(InterestID)
 )
 
-CREATE TABLE SubscriptionTypes
-(
-SubID INT IDENTITY(1,1),
-SubType VARCHAR(20) NOT NULL,
-PlanPrice MONEY NOT NULL
-CONSTRAINT PK_SubID PRIMARY KEY (SubID)
-)
+
 
 CREATE TABLE Transactions
 (
 TranID INT IDENTITY(1,1),
-TransactionType INT NOT NULL,
 TransactionDate DATE NOT NULL,
 MemberID VARCHAR(10) NOT NULL,
-Total MONEY NOT NULL,
 Result VARCHAR(15) NOT NULL
 CONSTRAINT PK_TranID PRIMARY KEY (TranID),
-CONSTRAINT FK_Transactions_SubscriptionTypes FOREIGN KEY (TransactionType) REFERENCES SubscriptionTypes(SubID),
 CONSTRAINT FK_Transactions_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
 CONSTRAINT CK_ResultTypes CHECK (Result IN ('Approved', 'Declined', 'Invalid Card'))
 )
@@ -132,11 +132,13 @@ CONSTRAINT CK_AccountType CHECK (AccountType IN ('Bank', 'PayPal', 'Swipe', 'Goo
 CREATE TABLE AccountCharges
 (
 ChargeID INT IDENTITY,
-MemberID VARCHAR(10) NOT NULL,
+TranID INT NOT NULL,
+ChargeDate DATE NOT NULL,
+ChargeTotal MONEY NOT NULL,
+Result BIT NOT NULL
 
-
-CONSTRAINT PK_ChargeID PRIMARY KEY (ChargeID),
-CONSTRAINT FK_Charges_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
+CONSTRAINT PK_ChargeTranID PRIMARY KEY (ChargeID, TranID),
+CONSTRAINT FK_Charges_Transactions FOREIGN KEY (TranID) REFERENCES Transactions(TranID)
 )
 
 GO
@@ -166,25 +168,28 @@ BEGIN
 	RAISERROR ('Please insert the account number associated with this bank account.', 16, 1)
 	ROLLBACK TRAN
 	END
-
+END
 GO
 
+INSERT SubscriptionTypes
+VALUES ('2 Year Plan', 189.00), ('1 Year Plan', 99.00), ('Quarterly', 27.00), ('Monthly', 9.99)
+
 INSERT Members
-VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', 'bfallon0@artisteer.com', '818-873-3863', '06-29-1971', '04-07-2017', 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
-('M0002', 'Katee', 'Virgie', 'Gepp', 'F', 'vgepp1@nih.gov', '503-689-8066', '04-03-1972', '11-29-2017', 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
-('M0003', 'Lilla', 'Charmion', 'Eatttok', 'F', 'ceatttok2@google.com.br', '210-426-7426', '12-13-1975', '02-26-2017', 1, 'porttitor lorem id ligula suspendisse ornare consequat lectus in est risus auctor sed tristique in tempus sit amet sem fusce consequat nulla nisl nunc nisl'),
-('M0004', 'Ddene', 'Shelba', 'Clapperton', 'F', 'sclapperton3@mapquest.com', '716-674-1640', '02-19-1997', '11-05-2017', 1, 'morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien placerat ante nulla justo aliquam quis turpis'), 
-('M0005', 'Audrye', 'Agathe', 'Dawks', 'F', 'adawks4@mlb.com', '305-415-9419', '02-07-1989', '01-15-2016', 1, 'nisi at nibh in hac habitasse platea dictumst aliquam augue quam sollicitudin vitae consectetuer eget rutrum at lorem integer'), 
-('M0006', 'Fredi', 'Melisandra', 'Burgyn', 'F', 'mburgyn5@cbslocal.com', '214-650-9837', '05-31-1956', '03-13-2017', 1, 'congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien'), 
-('M0007', 'Dimitri', 'Francisco', 'Bellino', 'M', 'fbellino6@devhub.com', '937-971-1026', '10-12-1976', '08-09-2017', 1, 'eros vestibulum ac est lacinia nisi venenatis tristique fusce congue diam id ornare imperdiet sapien urna pretium'), 
-('M0008', 'Enrico', 'Cleve', 'Seeney', 'M', 'cseeney7@macromedia.com', '407-445-6895', '02-29-1988', '09-09-2016', 1, 'dapibus duis at velit eu est congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum'), 
-('M0009', 'Marylinda', 'Jenine', 'O' + '''' + 'Siaghail', 'F', 'josiaghail8@tuttocitta.it', '206-484-6850', '02-06-1965', '11-21-2016', 0, 'curae duis faucibus accumsan odio curabitur convallis duis consequat dui nec nisi volutpat eleifend donec ut dolor morbi vel lectus in quam'),
-('M0010', 'Luce', 'Codi', 'Kovalski', 'M', 'ckovalski9@facebook.com', '253-159-6773', '03-31-1978', '12-22-2017', 1, 'magna vulputate luctus cum sociis natoque penatibus et magnis dis parturient montes nascetur ridiculus mus'), 
-('M0011', 'Claiborn', 'Shadow', 'Baldinotti', 'M', 'sbaldinottia@discuz.net', '253-141-4314', '12-26-1991', '03-19-2017', 1, 'lorem integer tincidunt ante vel ipsum praesent blandit lacinia erat vestibulum sed magna at nunc commodo'), 
-('M0012', 'Isabelle', 'Betty', 'Glossop', 'F', 'bglossopb@msu.edu', '412-646-5145', '02-17-1965', '04-25-2016', 1, 'magna ac consequat metus sapien ut nunc vestibulum ante ipsum primis in faucibus orci luctus'), 
-('M0013', 'Davina', 'Lira', 'Wither', 'F', 'lwitherc@smugmug.com', '404-495-3676', '12-16-1957', '03-21-2016', 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
-('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M', 'hdegregoriod@a8.net', '484-717-6750', '10-14-1964', '01-27-2017', 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
-('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M', 'abirdfielde@over-blog.com', '915-299-3451', '01-09-1983', '10-06-2017', 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
+VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', 'bfallon0@artisteer.com', '818-873-3863', '06-29-1971', '04-07-2017', 4, 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
+('M0002', 'Katee', 'Virgie', 'Gepp', 'F', 'vgepp1@nih.gov', '503-689-8066', '04-03-1972', '11-29-2017', 4, 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
+('M0003', 'Lilla', 'Charmion', 'Eatttok', 'F', 'ceatttok2@google.com.br', '210-426-7426', '12-13-1975', '02-26-2017', 3, 1, 'porttitor lorem id ligula suspendisse ornare consequat lectus in est risus auctor sed tristique in tempus sit amet sem fusce consequat nulla nisl nunc nisl'),
+('M0004', 'Ddene', 'Shelba', 'Clapperton', 'F', 'sclapperton3@mapquest.com', '716-674-1640', '02-19-1997', '11-05-2017', 3, 1, 'morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien placerat ante nulla justo aliquam quis turpis'), 
+('M0005', 'Audrye', 'Agathe', 'Dawks', 'F', 'adawks4@mlb.com', '305-415-9419', '02-07-1989', '01-15-2016', 4, 1, 'nisi at nibh in hac habitasse platea dictumst aliquam augue quam sollicitudin vitae consectetuer eget rutrum at lorem integer'), 
+('M0006', 'Fredi', 'Melisandra', 'Burgyn', 'F', 'mburgyn5@cbslocal.com', '214-650-9837', '05-31-1956', '03-13-2017', 2, 1, 'congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien'), 
+('M0007', 'Dimitri', 'Francisco', 'Bellino', 'M', 'fbellino6@devhub.com', '937-971-1026', '10-12-1976', '08-09-2017', 4, 1, 'eros vestibulum ac est lacinia nisi venenatis tristique fusce congue diam id ornare imperdiet sapien urna pretium'), 
+('M0008', 'Enrico', 'Cleve', 'Seeney', 'M', 'cseeney7@macromedia.com', '407-445-6895', '02-29-1988', '09-09-2016', 2, 1, 'dapibus duis at velit eu est congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum'), 
+('M0009', 'Marylinda', 'Jenine', 'O' + '''' + 'Siaghail', 'F', 'josiaghail8@tuttocitta.it', '206-484-6850', '02-06-1965', '11-21-2016', 2, 0, 'curae duis faucibus accumsan odio curabitur convallis duis consequat dui nec nisi volutpat eleifend donec ut dolor morbi vel lectus in quam'),
+('M0010', 'Luce', 'Codi', 'Kovalski', 'M', 'ckovalski9@facebook.com', '253-159-6773', '03-31-1978', '12-22-2017', 4, 1, 'magna vulputate luctus cum sociis natoque penatibus et magnis dis parturient montes nascetur ridiculus mus'), 
+('M0011', 'Claiborn', 'Shadow', 'Baldinotti', 'M', 'sbaldinottia@discuz.net', '253-141-4314', '12-26-1991', '03-19-2017', 4, 1, 'lorem integer tincidunt ante vel ipsum praesent blandit lacinia erat vestibulum sed magna at nunc commodo'), 
+('M0012', 'Isabelle', 'Betty', 'Glossop', 'F', 'bglossopb@msu.edu', '412-646-5145', '02-17-1965', '04-25-2016', 3, 1, 'magna ac consequat metus sapien ut nunc vestibulum ante ipsum primis in faucibus orci luctus'), 
+('M0013', 'Davina', 'Lira', 'Wither', 'F', 'lwitherc@smugmug.com', '404-495-3676', '12-16-1957', '03-21-2016', 2, 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
+('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M', 'hdegregoriod@a8.net', '484-717-6750', '10-14-1964', '01-27-2017', 4, 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
+('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M', 'abirdfielde@over-blog.com', '915-299-3451', '01-09-1983', '10-06-2017', 4, 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
 
 INSERT Interests (Interest)
 VALUES ('Acting'), ('Video Games'), ('Crossword Puzzles'), ('Calligraphy'), ('Movies'), ('Restaurants'), ('Woodworking'), 
@@ -232,6 +237,24 @@ VALUES ('M0001', 3), ('M0001', 4), ('M0001', 5), ('M0002', 1), ('M0002', 3), ('M
 ('M0013', 1), ('M0013', 2), ('M0013', 5), ('M0014', 2), ('M0014', 3), ('M0014', 4), ('M0015', 1), ('M0015', 2), 
 ('M0015', 3), ('M0015', 4)
 
+
+
+INSERT Transactions
+VALUES ( '01-15-2016', 'M0005', 'Approved'), ( '02-15-2016', 'M0005', 'Approved'), 
+('03-15-2016','M0005','Approved'), ('03-21-2016','M0013','Approved'), ('04-15-2016','M0005','Approved'), 
+('04-25-2016','M0012','Approved'), ('05-15-2016','M0005','Approved'), ('06-15-2016','M0005','Approved'), 
+('07-15-2016','M0005','Approved'), ('07-25-2016','M0012','Approved'), ('08-15-2016','M0005','Approved'), 
+('09-09-2016','M0008','Approved'), ('09-15-2016','M0005','Approved'), ('10-15-2016','M0005','Approved'), 
+('10-25-2016','M0012','Approved'), ('11-15-2016','M0005','Approved'), ('11-21-2016','M0009','Approved'), 
+('12-15-2016','M0005','Approved'), ('01-15-2017','M0005','Approved'), ('01-25-2017','M0012','Approved'), 
+('01-27-2017','M0014','Approved'), ('02-15-2017','M0005','Approved'), ('02-26-2017','M0003','Approved'), 
+('02-27-2017','M0014','Approved'), ('03-13-2017','M0006','Approved'), ('','',''), 
+('','',''), ('','',''), ('','',''), 
+('','',''), ('','',''), ('','',''), 
+('','',''), ('','',''), ('','',''), 
+('','',''), ('','',''), ('','',''), 
+('','',''), ('','',''), ('','','')
+
 GO
 CREATE FUNCTION [dbo].[fn_EventAttendance]
 (
@@ -278,23 +301,31 @@ CREATE PROC sp_NewSignUps
 )
 AS
 BEGIN
-	--WITH Months AS
-	--(
-	--SELECT @BeginDate AS [Month]
-	--UNION ALL
-	--SELECT DATEADD(MONTH, 1, [Month])
-	--FROM Months
-	--WHERE DATEADD(MONTH, 1, [Month]) <= @EndDate
 
-	--)
-	SELECT COUNT(MemberID), [Month]
-	FROM Members Months
+	SELECT CAST(DATEADD(MONTH, DATEDIFF(MONTH, 0, MAX(JoinDate)), 0) AS DATE) [Month], COUNT(MemberID) [Number of Sign Ups]
+	FROM Members
 	WHERE JoinDate BETWEEN @BeginDate AND @EndDate
-	GROUP BY [Month]
+	GROUP BY DATEPART(MONTH, JoinDate), DATEPART(YEAR, JoinDate)
 END
 
 GO
 
-EXEC sp_NewSignUps'01-01-2017', '10-31-2017'
+--EXEC sp_NewSignUps'01-01-2016', '12-31-2018'
+
+GO
 
 --CREATE PROC sp_BillRenewal
+--AS
+--BEGIN
+--	IF (SELECT JoinDate FROM Members) =  (SELECT CAST(GETDATE() AS DATE))
+--		BEGIN
+
+
+--		END
+
+
+
+--END
+
+--GO
+
