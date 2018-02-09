@@ -124,7 +124,9 @@ CONSTRAINT FK_MemberInterests_Interests FOREIGN KEY (InterestID) REFERENCES Inte
 PRINT 'MemberInterests table created'
 
 /*
-
+Here I made a table for the less in-depth details on the different transactions in the database. It included the date of the transaction,
+which member was involved, and how the transaction turned out. I put a check constraint on the Result column to limit the results to 
+Approved, Declined, Invalid Card, and Invalid Account, as it shouldn't need anything more than that.
 */
 
 CREATE TABLE Transactions
@@ -135,11 +137,85 @@ MemberID VARCHAR(10) NOT NULL,
 Result VARCHAR(15) NOT NULL
 CONSTRAINT PK_TranID PRIMARY KEY (TranID),
 CONSTRAINT FK_Transactions_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
-CONSTRAINT CK_ResultTypes CHECK (Result IN ('Approved', 'Declined', 'Invalid Card'))
+CONSTRAINT CK_ResultTypes CHECK (Result IN ('Approved', 'Declined', 'Invalid Card', 'Invalid Account'))
 )
 
 
 PRINT 'Transactions table created'
+
+/*
+Before I get to the more detailed half of the information on transactions, I needed to create a couple of tables containing the various ways
+for members to pay for their subscriptions. I started this with the more common payment method, credit/debit cards. The table contains what
+type of card it is (Mastercard, Visa, etc.), the number on the card (which is a BIGINT datatype because card numbers are always only numbers,
+and never have letters scattered within, and a BIGINT takes up less space than a VARCHAR would in this case), the security code of the card,
+and when the card expires. Pretty much exactly what would be expected.
+*/
+
+CREATE TABLE CardPayment
+(
+CardID INT IDENTITY,
+MemberID VARCHAR(10) NOT NULL,
+CardType VARCHAR(60) NOT NULL,
+CardNumber BIGINT NOT NULL,
+SecurityCode SMALLINT NOT NULL,
+ExpirationDate DATE NOT NULL
+CONSTRAINT PK_CardMemberID PRIMARY KEY (CardID, MemberID),
+CONSTRAINT FK_Payment_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
+)
+
+
+PRINT 'CardPayment table created'
+
+/*
+To handle the other types of payment, directly using a bank account or an online pay service (like Paypal), I put them together in one table.
+The way that it works is that bank accounts need the AccountNumber column filled, while online pay services need the e-mail associated with
+said account filled in. There's also a check constraint on the AccountType column to only have Bank put in or different online pay services,
+which I allowed a few that came to mind.
+*/
+
+CREATE TABLE OtherPayment
+(AccountID INT IDENTITY,
+MemberID VARCHAR(10) NOT NULL,
+AccountType VARCHAR(20) NOT NULL,
+AccountNumber VARCHAR(15) NULL,
+AccountEmail VARCHAR(70) NULL
+
+
+CONSTRAINT PK_AccountID PRIMARY KEY (AccountID),
+CONSTRAINT FK_Other_Members FOREIGN KEY (MemberID) REFERENCES Members (MemberID),
+CONSTRAINT CK_AccountType CHECK (AccountType IN ('Bank', 'PayPal', 'Swipe', 'Google Wallet'))
+)
+
+
+PRINT 'OtherPayment table created'
+
+/*
+The following table functions similarly to the Transactions table, but contains the more detailed information. It works pretty much the same
+as how the SalesOrderHeader and SalesOrderDetail tables work in the AdventureWorks database. At least one charge is associated with each 
+transaction, hence the foreign key TranID, the date that the account was charged, how much the account was charged, whether the charge was
+successful, and finally a column to identify what account is going to be charged. The AccountIdentification column must have a value that
+matches either the CardNumber column in the CardPayment table, the AccountNumber column in the OtherPayment table, or the AccountEmail column
+in the OtherPayment table. This is handled later on.
+*/
+
+CREATE TABLE AccountCharges
+(
+ChargeID INT IDENTITY,
+TranID INT NOT NULL,
+ChargeDate DATE NOT NULL,
+ChargeTotal MONEY NOT NULL,
+AccountIdentification VARCHAR(70) NOT NULL,
+Success BIT NOT NULL
+
+CONSTRAINT PK_ChargeTranID PRIMARY KEY (ChargeID, TranID),
+CONSTRAINT FK_Charges_Transactions FOREIGN KEY (TranID) REFERENCES Transactions(TranID)
+)
+
+PRINT 'AccountCharges table created'
+
+/*
+Coming up is another many-to-many relationship to show which members have gone to what events. 
+*/
 
 CREATE TABLE [Events]
 (
@@ -164,54 +240,6 @@ CONSTRAINT FK_MemberEvents_Events FOREIGN KEY (EventID) REFERENCES [Events](Even
 )
 
 PRINT 'MemberEvents table created'
-
-
-CREATE TABLE CardPayment
-(
-CardID INT IDENTITY,
-MemberID VARCHAR(10) NOT NULL,
-CardType VARCHAR(60) NOT NULL,
-CardNumber BIGINT NOT NULL,
-SecurityCode SMALLINT NOT NULL,
-ExpirationDate DATE NOT NULL
-CONSTRAINT PK_CardMemberID PRIMARY KEY (CardID, MemberID),
-CONSTRAINT FK_Payment_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
-)
-
-
-PRINT 'CardPayment table created'
-
-CREATE TABLE OtherPayment
-(AccountID INT IDENTITY,
-MemberID VARCHAR(10) NOT NULL,
-AccountType VARCHAR(20) NOT NULL,
-AccountNumber VARCHAR(15) NULL,
-AccountEmail VARCHAR(70) NULL
-
-
-CONSTRAINT PK_AccountID PRIMARY KEY (AccountID),
-CONSTRAINT FK_Other_Members FOREIGN KEY (MemberID) REFERENCES Members (MemberID),
-CONSTRAINT CK_AccountType CHECK (AccountType IN ('Bank', 'PayPal', 'Swipe', 'Google Wallet'))
-)
-
-
-PRINT 'OtherPayment table created'
-
-
-CREATE TABLE AccountCharges
-(
-ChargeID INT IDENTITY,
-TranID INT NOT NULL,
-ChargeDate DATE NOT NULL,
-ChargeTotal MONEY NOT NULL,
-AccountIdentification VARCHAR(70) NOT NULL,
-Success BIT NOT NULL
-
-CONSTRAINT PK_ChargeTranID PRIMARY KEY (ChargeID, TranID),
-CONSTRAINT FK_Charges_Transactions FOREIGN KEY (TranID) REFERENCES Transactions(TranID)
-)
-
-PRINT 'AccountCharges table created'
 
 CREATE TABLE MemberEmail
 (
