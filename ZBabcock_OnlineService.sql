@@ -214,7 +214,8 @@ CONSTRAINT FK_Charges_Transactions FOREIGN KEY (TranID) REFERENCES Transactions(
 PRINT 'AccountCharges table created'
 
 /*
-Coming up is another many-to-many relationship to show which members have gone to what events. 
+Coming up is another many-to-many relationship to show which members have gone to what events. First the table that contains all of the info
+I was given on the events: the name of the event, the name of the speaker, and when the event happened.
 */
 
 CREATE TABLE [Events]
@@ -230,6 +231,10 @@ CONSTRAINT PK_EventID PRIMARY KEY (EventID)
 
 PRINT 'Events table created'
 
+/*
+Immediately afterwards, I created an intermediary table for Members and Events, like last time with MemberInterests.
+*/
+
 CREATE TABLE MemberEvents
 (
 MemberID VARCHAR(10),
@@ -241,16 +246,29 @@ CONSTRAINT FK_MemberEvents_Events FOREIGN KEY (EventID) REFERENCES [Events](Even
 
 PRINT 'MemberEvents table created'
 
+/*
+I almost kept the member's email in the Members table, but then I realized that I needed it to be separate to fulfill a functional requirement,
+so I moved it into it's own small table. All it contains is the ID of each member, and their email.
+
+*/
+
 CREATE TABLE MemberEmail
 (
 Email VARCHAR(70)
 ,MemberID VARCHAR(10)
 
 
-CONSTRAINT PK_ContactMemberID PRIMARY KEY (Email, MemberID),
+CONSTRAINT PK_ContactMemberID PRIMARY KEY (Email),
 CONSTRAINT FK_Contact_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
-
 )
+PRINT 'MemberEmail table created.'
+
+/*
+For pretty much all of the same reasons, I did the same thing with the member's phone numbers as I did with the member's emails. I also
+added what type of phone it is, which I made optional, as none of the phone numbers given specified what kind of numbers they were, and
+it's not THAT important, but it could be useful information if the company needed to make a call. The PhoneType column also has a check
+constraint on it to limit to Home, Cell, and Work, as that's the standard with actual companies.
+*/
 
 CREATE TABLE MemberPhone
 (
@@ -263,6 +281,14 @@ CONSTRAINT FK_Phone_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
 CONSTRAINT CK_PhoneTypes CHECK (PhoneType IN ('Home', 'Cell', 'Work'))
 )
 
+PRINT 'MemberPhone table created.'
+
+/*
+As a final table, I created a table containing the login information for each member. I made the primary key a composite key on both PassID
+and the MemberID so as to ensure that no members have two logins inserted on accident, as they should only have one. The actual login column
+just links back to the Email table, and the PasswordHash is an encrypted hash of the member's password.
+*/
+
 CREATE TABLE MemberLoginInfo
 (
 PassID INT,
@@ -270,12 +296,19 @@ MemberID VARCHAR(10),
 [Login] VARCHAR(70) NOT NULL,
 PasswordHash VARCHAR(40) NOT NULL
 
-CONSTRAINT PK_PassID PRIMARY KEY (PassID),
+CONSTRAINT PK_PassID PRIMARY KEY (PassID, MemberID),
 CONSTRAINT FK_Login_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
 CONSTRAINT FK_Login_Email FOREIGN KEY ([Login]) REFERENCES MemberEmail(Email)
 )
 
+PRINT 'MemberLoginInfo table created.'
+
 GO
+
+/*
+Now we switch over to the triggers. This first trigger is on the OtherPayments table to ensure it works the way I intend. It checks to see
+if what's being put into it is an online pay service, and if it is, that it has AccountEmail filled in, and just AccountEmail.
+*/
 
 CREATE TRIGGER trg_AccountOnlineEmail
 ON OtherPayment
@@ -288,6 +321,11 @@ BEGIN
 		ROLLBACK TRAN
 		END
 
+	IF EXISTS (SELECT * FROM inserted WHERE AccountType <> 'Bank' AND AccountNumber IS NOT NULL)
+		BEGIN
+		RAISERROR ('Online pay service accounts should not have AccountNumber filled in. That is reserved for bank accounts.', 16, 1)
+		ROLLBACK TRAN
+		END
 END
 
 GO
@@ -295,6 +333,11 @@ GO
 PRINT 'E-mail check trigger created'
 
 GO
+
+/*
+Pretty much the exact same trigger as the last one, but this trigger covers all of the opposite things in the OtherPayment table. So it
+ensures that Bank accounts have their bank account number in, and ONLY their bank account number.
+*/
 
 CREATE TRIGGER trg_AccountBankNumber
 ON OtherPayment
@@ -306,12 +349,24 @@ BEGIN
 	RAISERROR ('Please insert the account number associated with this bank account.', 16, 1)
 	ROLLBACK TRAN
 	END
+
+	IF EXISTS (SELECT * FROM inserted WHERE AccountType = 'Bank' AND AccountEmail IS NOT NULL)
+	BEGIN
+	RAISERROR ('Bank accounts should not have an Email filled out here. That is reserved for only online pay service accounts.', 16, 1)
+	ROLLBACK TRAN
+	END
 END
 GO
 
 PRINT 'Bank check trigger created'
 
 GO
+
+/*
+This trigger works with the AccountCharges table in that ensuring that the AccountIdentification column contains a valid value from CardPayment
+or OtherPayment to ensure that it works in the way that I want it to. It essentially functions as a foreign key that connects to three 
+different columns instead of one.
+*/
 
 CREATE TRIGGER trg_ExistingAccountID
 ON AccountCharges
@@ -331,6 +386,12 @@ GO
 
 PRINT 'AccountID check trigger on the AccountCharges table created'
 
+--------------------------------------------INSERTS BEGIN HERE--------------------------------------------------
+
+/*
+All of my inserts go in pretty much the same order the tables they belong to were created in for the same reason: foreign key constraints.
+They don't really require explaining, as that's already been covered.
+*/
 
 INSERT SubscriptionTypes
 VALUES ('2 Year Plan', 189.00), ('1 Year Plan', 99.00), ('Quarterly', 27.00), ('Monthly', 9.99), ('Free', 0.00)
@@ -338,21 +399,21 @@ VALUES ('2 Year Plan', 189.00), ('1 Year Plan', 99.00), ('Quarterly', 27.00), ('
 PRINT 'SubscriptionTypes inserts completed'
 
 INSERT Members
-VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', 'bfallon0@artisteer.com', '818-873-3863', '06-29-1971', '04-07-2017', 4, 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
-('M0002', 'Katee', 'Virgie', 'Gepp', 'F', 'vgepp1@nih.gov', '503-689-8066', '04-03-1972', '11-29-2017', 4, 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
-('M0003', 'Lilla', 'Charmion', 'Eatttok', 'F', 'ceatttok2@google.com.br', '210-426-7426', '12-13-1975', '02-26-2017', 3, 1, 'porttitor lorem id ligula suspendisse ornare consequat lectus in est risus auctor sed tristique in tempus sit amet sem fusce consequat nulla nisl nunc nisl'),
-('M0004', 'Ddene', 'Shelba', 'Clapperton', 'F', 'sclapperton3@mapquest.com', '716-674-1640', '02-19-1997', '11-05-2017', 3, 1, 'morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien placerat ante nulla justo aliquam quis turpis'), 
-('M0005', 'Audrye', 'Agathe', 'Dawks', 'F', 'adawks4@mlb.com', '305-415-9419', '02-07-1989', '01-15-2016', 4, 1, 'nisi at nibh in hac habitasse platea dictumst aliquam augue quam sollicitudin vitae consectetuer eget rutrum at lorem integer'), 
-('M0006', 'Fredi', 'Melisandra', 'Burgyn', 'F', 'mburgyn5@cbslocal.com', '214-650-9837', '05-31-1956', '03-13-2017', 2, 1, 'congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien'), 
-('M0007', 'Dimitri', 'Francisco', 'Bellino', 'M', 'fbellino6@devhub.com', '937-971-1026', '10-12-1976', '08-09-2017', 4, 1, 'eros vestibulum ac est lacinia nisi venenatis tristique fusce congue diam id ornare imperdiet sapien urna pretium'), 
-('M0008', 'Enrico', 'Cleve', 'Seeney', 'M', 'cseeney7@macromedia.com', '407-445-6895', '02-29-1988', '09-09-2016', 2, 1, 'dapibus duis at velit eu est congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum'), 
-('M0009', 'Marylinda', 'Jenine', 'O' + '''' + 'Siaghail', 'F', 'josiaghail8@tuttocitta.it', '206-484-6850', '02-06-1965', '11-21-2016', 2, 0, 'curae duis faucibus accumsan odio curabitur convallis duis consequat dui nec nisi volutpat eleifend donec ut dolor morbi vel lectus in quam'),
-('M0010', 'Luce', 'Codi', 'Kovalski', 'M', 'ckovalski9@facebook.com', '253-159-6773', '03-31-1978', '12-22-2017', 4, 1, 'magna vulputate luctus cum sociis natoque penatibus et magnis dis parturient montes nascetur ridiculus mus'), 
-('M0011', 'Claiborn', 'Shadow', 'Baldinotti', 'M', 'sbaldinottia@discuz.net', '253-141-4314', '12-26-1991', '03-19-2017', 4, 1, 'lorem integer tincidunt ante vel ipsum praesent blandit lacinia erat vestibulum sed magna at nunc commodo'), 
-('M0012', 'Isabelle', 'Betty', 'Glossop', 'F', 'bglossopb@msu.edu', '412-646-5145', '02-17-1965', '04-25-2016', 3, 1, 'magna ac consequat metus sapien ut nunc vestibulum ante ipsum primis in faucibus orci luctus'), 
-('M0013', 'Davina', 'Lira', 'Wither', 'F', 'lwitherc@smugmug.com', '404-495-3676', '12-16-1957', '03-21-2016', 2, 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
-('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M', 'hdegregoriod@a8.net', '484-717-6750', '10-14-1964', '01-27-2017', 4, 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
-('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M', 'abirdfielde@over-blog.com', '915-299-3451', '01-09-1983', '10-06-2017', 4, 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
+VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M',  '818-873-3863', '06-29-1971', '04-07-2017', 4, 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
+('M0002', 'Katee', 'Virgie', 'Gepp', 'F',  '503-689-8066', '04-03-1972', '11-29-2017', 4, 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
+('M0003', 'Lilla', 'Charmion', 'Eatttok', 'F',  '210-426-7426', '12-13-1975', '02-26-2017', 3, 1, 'porttitor lorem id ligula suspendisse ornare consequat lectus in est risus auctor sed tristique in tempus sit amet sem fusce consequat nulla nisl nunc nisl'),
+('M0004', 'Ddene', 'Shelba', 'Clapperton', 'F',  '716-674-1640', '02-19-1997', '11-05-2017', 3, 1, 'morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien placerat ante nulla justo aliquam quis turpis'), 
+('M0005', 'Audrye', 'Agathe', 'Dawks', 'F',  '305-415-9419', '02-07-1989', '01-15-2016', 4, 1, 'nisi at nibh in hac habitasse platea dictumst aliquam augue quam sollicitudin vitae consectetuer eget rutrum at lorem integer'), 
+('M0006', 'Fredi', 'Melisandra', 'Burgyn', 'F',  '214-650-9837', '05-31-1956', '03-13-2017', 2, 1, 'congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien'), 
+('M0007', 'Dimitri', 'Francisco', 'Bellino', 'M',  '937-971-1026', '10-12-1976', '08-09-2017', 4, 1, 'eros vestibulum ac est lacinia nisi venenatis tristique fusce congue diam id ornare imperdiet sapien urna pretium'), 
+('M0008', 'Enrico', 'Cleve', 'Seeney', 'M',  '407-445-6895', '02-29-1988', '09-09-2016', 2, 1, 'dapibus duis at velit eu est congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum'), 
+('M0009', 'Marylinda', 'Jenine', 'O' + '''' + 'Siaghail', 'F',  '206-484-6850', '02-06-1965', '11-21-2016', 2, 0, 'curae duis faucibus accumsan odio curabitur convallis duis consequat dui nec nisi volutpat eleifend donec ut dolor morbi vel lectus in quam'),
+('M0010', 'Luce', 'Codi', 'Kovalski', 'M',  '253-159-6773', '03-31-1978', '12-22-2017', 4, 1, 'magna vulputate luctus cum sociis natoque penatibus et magnis dis parturient montes nascetur ridiculus mus'), 
+('M0011', 'Claiborn', 'Shadow', 'Baldinotti', 'M',  '253-141-4314', '12-26-1991', '03-19-2017', 4, 1, 'lorem integer tincidunt ante vel ipsum praesent blandit lacinia erat vestibulum sed magna at nunc commodo'), 
+('M0012', 'Isabelle', 'Betty', 'Glossop', 'F',  '412-646-5145', '02-17-1965', '04-25-2016', 3, 1, 'magna ac consequat metus sapien ut nunc vestibulum ante ipsum primis in faucibus orci luctus'), 
+('M0013', 'Davina', 'Lira', 'Wither', 'F',  '404-495-3676', '12-16-1957', '03-21-2016', 2, 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
+('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M',  '484-717-6750', '10-14-1964', '01-27-2017', 4, 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
+('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M',  '915-299-3451', '01-09-1983', '10-06-2017', 4, 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
 
 PRINT 'Members inserts completed'
 
@@ -461,8 +522,13 @@ VALUES ( '01-15-2016', 'M0005', 'Approved'), ( '02-15-2016', 'M0005', 'Approved'
 
 PRINT 'Transactions inserts completed'
 
-INSERT AccountCharges
-VALUES (1, '01-15-2016', 9.99, '3571066026049076', 1) 
+/*
+The only insert worth explaining a bit about is this insert. Due to the trigger I set up on the AccountCharges table,
+multiple entries can't be made at once, like the other inserts were. As such, I set them up to insert individually. I don't think
+this will really pose an issue, as this being actually done would probably be automated and not inserted simultaneously.
+*/
+
+INSERT AccountCharges VALUES (1, '01-15-2016', 9.99, '3571066026049076', 1) 
 INSERT AccountCharges VALUES (2, '02-15-2016', 9.99, '3571066026049076', 1) 
 INSERT AccountCharges VALUES (3, '03-15-2016', 9.99, '3571066026049076', 1) 
 INSERT AccountCharges VALUES (4, '03-21-2016', 99.00, '3559166521684728', 1) 
@@ -560,10 +626,25 @@ INSERT AccountCharges VALUES (89, '2018-01-22', 9.99, '3530142576111598', 1)
 INSERT AccountCharges VALUES (90, '2018-01-25', 27.00, '3543168150106220', 1) 
 INSERT AccountCharges VALUES (91, '2018-01-27', 9.99, '30414677064054', 1)
 
-PRINT 'AccountCharges inserts completed'
+PRINT 'AccountCharges inserts completed.'
 
+INSERT MemberEmail
+VALUES ('bfallon0@artisteer.com', 'M0001'), ('vgepp1@nih.gov', 'M0002'), ('ceatttok2@google.com.br', 'M0003'), 
+('sclapperton3@mapquest.com', 'M0004'), ('adawks4@mlb.com', 'M0005'), ('mburgyn5@cbslocal.com', 'M0006'), 
+('fbellino6@devhub.com', 'M0007'), ('cseeney7@macromedia.com', 'M0008'), ('josiaghail8@tuttocitta.it', 'M0009'), 
+('ckovalski9@facebook.com', 'M0010'), ('sbaldinottia@discuz.net', 'M0011'), ('bglossopb@msu.edu', 'M0012'), 
+('lwitherc@smugmug.com', 'M0013'), ('hdegregoriod@a8.net', 'M0014'), ('abirdfielde@over-blog.com', 'M0015')
+
+PRINT 'MemberEmail inserts completed.'
 
 GO
+
+/*
+Here's my first functional requirement fulfilled: "Attendance per event over a given time frame. (Number of members at each event.)"
+I had this done as a function, as a view wouldn't be able to accept the parameters, and this information feels like it might be used with 
+other tables for analytical purposes, and making it a table-valued function allows that. It accepts two parameters to set up the window
+of time it's observing, groups by the event, and counts up the number of members that had went to it in the MemberEvents table.
+*/
 CREATE FUNCTION [dbo].[fn_EventAttendance]
 (
 @BeginDate DATE,
@@ -582,6 +663,18 @@ GROUP BY ME.EventID, E.EventTitle
 GO
 PRINT 'Event Attendance user function created'
 GO
+
+/*
+The next function is for the functional requirement "A list of members who are celebrating their birthday this month."
+I made this one a table-valued function as well purely because the only reason that comes to mind to have it is so some kind of message can 
+be sent to the members that have their birthday this month, and they might want to get their emails or phone numbers, so I kept it as a 
+function so they can easily do that. I could've also done a view, but I tend to resort views for something that will be used often, while
+this should only be used at most once a month.
+
+It retrieves the members full name and birthdate with a WHERE clause that ensures that the month in that member's birthday matches the month
+of the current date. Simple stuff.
+*/
+
 CREATE FUNCTION [dbo].[fn_MemberBirthdays]
 ()
 RETURNS TABLE
@@ -592,15 +685,28 @@ FROM Members
 WHERE DATEPART(MONTH, BirthDate) = DATEPART(MONTH, GETDATE())
 
 GO
+
 PRINT 'Member Birthdays user function created'
+
 GO
+
+/*
+For this functional requirement ("A complete contact list for current members with name, physical mailing address, phone number and e-mail."),
+I used a view, as it seems like something that would not only be used at near-random intervals, but quite often as well, and chances are work
+would need to be done with them, all of which a view is good for. In essence, it's just a simple query: join the Members table with the 
+Addresses table, the MemberEmail table, and the MemberPhone table
+*/
 CREATE VIEW [dbo].[CurrentMemberContact]
 AS
 
-SELECT M.MemberID, FirstName, MiddleName, LastName, MailAddress, City, [State], ZIPCode, Phone, EMail
+SELECT M.MemberID, FirstName, MiddleName, LastName, MailAddress, City, [State], ZIPCode, Phone, Email
 FROM Members M
 INNER JOIN Addresses A
 ON M.MemberID = A.MemberID
+INNER JOIN MemberEmail ME
+ON ME.MemberID = M.MemberID
+INNER JOIN MemberPhone MP
+ON MP.MemberID = M.MemberID
 WHERE [Current] <> 0
 
 GO
