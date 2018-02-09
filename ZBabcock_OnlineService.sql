@@ -20,7 +20,8 @@ USE OnlineService
 /*
 I created this table, SubscriptionTypes, first, because it has no columns that are reliant on another table (foreign keys),
 and the table after it, Members, DOES have a foreign key referencing it, and Members is referenced by a lot of different
-tables. This table is best placed at the top of the chain of CREATE TABLE statements.
+tables. This table is best placed at the top of the chain of CREATE TABLE statements. It covers the minimum information needed when
+talking about a subscription service: the plan type, and how much it costs, as that's really all that's needed.
 */
 
 CREATE TABLE SubscriptionTypes
@@ -33,6 +34,15 @@ CONSTRAINT PK_SubID PRIMARY KEY (SubID)
 
 PRINT 'SubscriptionTypes table created'
 
+/*
+The next table I created was the Members table, as it's referenced by so many tables in my database plan, and thus needs to exist for the
+foreign keys in the other tables to work. It contains the member's full name, properly split up, their gender, date of birth, date of joining,
+a foreign key column to SubscriptionTypes to show what type of subscription a member has, a flag for whether the member is still subscribed
+or not, and a column for notes about the member. There's also two check constraints in this table: one on the JoinDate column and one on the
+BirthDate column. Both check constraints restrict entries to be less than the current date, but the JoinDate check is more lax and accepts
+dates that are equal to the current date.
+*/
+
 CREATE TABLE Members
 (
 MemberID VARCHAR(10),
@@ -40,8 +50,6 @@ FirstName VARCHAR(20) NOT NULL,
 MiddleName VARCHAR(20) NULL,
 LastName VARCHAR(20) NOT NULL,
 Gender VARCHAR(2) NOT NULL,
-EMail VARCHAR(70) NULL,
-Phone VARCHAR(15) NULL,
 BirthDate DATE NOT NULL,
 JoinDate DATE NOT NULL,
 SubscriptionLevel INT NOT NULL,
@@ -58,6 +66,15 @@ CONSTRAINT CK_PrevBirth CHECK (BirthDate < GETDATE())
 PRINT 'Members table created'
 
 
+/*
+I created a table for the addresses of members next, as it's only reliant upon the Members table. That's the case for most of the tables, and
+I'll specify if it's a different case for a different table from here on in the documentation. I created a composite key on the AddressID 
+column and the MemberID column, since, theoretically speaking, two members signed up could live at the same address, but it'd probably happen
+so little, that creating an intermediary table would be near-pointless. I put in two columns: MailAddress, and BillAddress. In other databases,
+like AdventureWorks, these would be labeled "AddressLine1" and "AddressLine2", but I wanted BillAddress to only be used for P.O. Boxes and
+such, so I labeled them in the way that I did. After that is the rest of the provided address information.
+*/
+
 CREATE TABLE Addresses
 (
 AddressID INT IDENTITY(1,1),
@@ -67,11 +84,20 @@ BillAddress VARCHAR(50) NULL,
 City VARCHAR(25),
 [State] VARCHAR(20),
 ZIPCode VARCHAR(10)
-CONSTRAINT PK_AddressID PRIMARY KEY (AddressID)
+CONSTRAINT PK_AddressID PRIMARY KEY (AddressID, MemberID)
 CONSTRAINT FK_Addresses_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
 )
 
 PRINT 'Addresses table created'
+
+/*
+I noticed that the Excel file we were given had set up the Members page to contain three columns for the interests of members, some of which
+repeated multiple times, so I created two tables to handle this many-to-many relationship: an Interests table, which is made first, and then
+a MemberInterests table to properly connect the Interests table to the Members table. The Interests table is very simple: an ID column for the
+primary key, and then a column for the actual interests. There's a unique constraint on the Interest column to ensure no repeats are inserted.
+It may seem that I might as well made this table one column (the Interest column), and I considered that, but decided against it so it'd
+require less typing on the intermediary table.
+*/
 
 CREATE TABLE Interests
 (
@@ -83,7 +109,9 @@ CONSTRAINT UC_Interest UNIQUE (Interest)
 
 PRINT 'Interests table created'
 
-
+/*
+The intermediary table for Members and Interests, containing both of the ID's of the respective tables.
+*/
 CREATE TABLE MemberInterests
 (
 MemberID VARCHAR(10),
@@ -94,6 +122,10 @@ CONSTRAINT FK_MemberInterests_Interests FOREIGN KEY (InterestID) REFERENCES Inte
 )
 
 PRINT 'MemberInterests table created'
+
+/*
+
+*/
 
 CREATE TABLE Transactions
 (
@@ -180,6 +212,40 @@ CONSTRAINT FK_Charges_Transactions FOREIGN KEY (TranID) REFERENCES Transactions(
 )
 
 PRINT 'AccountCharges table created'
+
+CREATE TABLE MemberEmail
+(
+Email VARCHAR(70)
+,MemberID VARCHAR(10)
+
+
+CONSTRAINT PK_ContactMemberID PRIMARY KEY (Email, MemberID),
+CONSTRAINT FK_Contact_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID)
+
+)
+
+CREATE TABLE MemberPhone
+(
+PhoneNumber VARCHAR(15),
+MemberID VARCHAR(10),
+PhoneType VARCHAR(5) NULL
+
+CONSTRAINT PK_PhoneMemberID PRIMARY KEY (PhoneNumber, MemberID),
+CONSTRAINT FK_Phone_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
+CONSTRAINT CK_PhoneTypes CHECK (PhoneType IN ('Home', 'Cell', 'Work'))
+)
+
+CREATE TABLE MemberLoginInfo
+(
+PassID INT,
+MemberID VARCHAR(10),
+[Login] VARCHAR(70) NOT NULL,
+PasswordHash VARCHAR(40) NOT NULL
+
+CONSTRAINT PK_PassID PRIMARY KEY (PassID),
+CONSTRAINT FK_Login_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
+CONSTRAINT FK_Login_Email FOREIGN KEY ([Login]) REFERENCES MemberEmail(Email)
+)
 
 GO
 
@@ -548,6 +614,20 @@ GO
 --EXEC sp_NewSignUps '01-01-2016', '12-31-2018'
 PRINT 'New Monthly Sign Ups stored procedure created'
 GO
+
+CREATE VIEW [dbo].[MemberEmails]
+AS
+
+SELECT FirstName, MiddleName, LastName, EMail
+FROM Members M
+INNER JOIN MemberEmail E
+ON E.MemberID = M.MemberID
+WHERE [Current] <> 0
+
+GO
+
+
+
 --SELECT DATEDIFF(MONTH, 0, JoinDate)
 --FROM Members
 --SELECT JoinDate
