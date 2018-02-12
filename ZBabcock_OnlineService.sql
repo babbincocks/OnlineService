@@ -126,7 +126,7 @@ PRINT 'MemberInterests table created'
 /*
 Here I made a table for the less in-depth details on the different transactions in the database. It included the date of the transaction,
 which member was involved, and how the transaction turned out. I put a check constraint on the Result column to limit the results to 
-Approved, Declined, Invalid Card, and Invalid Account, as it shouldn't need anything more than that.
+Approved, Declined, Invalid Card, Invalid Account, and Pending, as it shouldn't need anything more than that.
 */
 
 CREATE TABLE Transactions
@@ -137,7 +137,7 @@ MemberID VARCHAR(10) NOT NULL,
 Result VARCHAR(15) NOT NULL
 CONSTRAINT PK_TranID PRIMARY KEY (TranID),
 CONSTRAINT FK_Transactions_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
-CONSTRAINT CK_ResultTypes CHECK (Result IN ('Approved', 'Declined', 'Invalid Card', 'Invalid Account'))
+CONSTRAINT CK_ResultTypes CHECK (Result IN ('Approved', 'Declined', 'Invalid Card', 'Invalid Account', 'Pending'))
 )
 
 
@@ -146,9 +146,9 @@ PRINT 'Transactions table created'
 /*
 Before I get to the more detailed half of the information on transactions, I needed to create a couple of tables containing the various ways
 for members to pay for their subscriptions. I started this with the more common payment method, credit/debit cards. The table contains what
-type of card it is (Mastercard, Visa, etc.), the number on the card (which is a BIGINT datatype because card numbers are always only numbers,
-and never have letters scattered within, and a BIGINT takes up less space than a VARCHAR would in this case), the security code of the card,
-and when the card expires. Pretty much exactly what would be expected.
+type of card it is (Mastercard, Visa, etc.), the number on the card (I initially had CardNumber as a BIGINT data type, as it took up less 
+space, but it caused an issue with a functional requirement later on), the security code of the card, and when the card expires. 
+Pretty much exactly what would be expected.
 */
 
 CREATE TABLE CardPayment
@@ -156,7 +156,7 @@ CREATE TABLE CardPayment
 CardID INT IDENTITY,
 MemberID VARCHAR(10) NOT NULL,
 CardType VARCHAR(60) NOT NULL,
-CardNumber BIGINT NOT NULL,
+CardNumber VARCHAR(70) NOT NULL,
 SecurityCode SMALLINT NOT NULL,
 ExpirationDate DATE NOT NULL
 CONSTRAINT PK_CardMemberID PRIMARY KEY (CardID, MemberID),
@@ -291,7 +291,7 @@ just links back to the Email table, and the PasswordHash is an encrypted hash of
 
 CREATE TABLE MemberLoginInfo
 (
-PassID INT,
+PassID INT IDENTITY(1,1),
 MemberID VARCHAR(10),
 [Login] VARCHAR(70) NOT NULL,
 PasswordHash VARCHAR(40) NOT NULL
@@ -386,6 +386,8 @@ GO
 
 PRINT 'AccountID check trigger on the AccountCharges table created'
 
+GO
+
 --------------------------------------------INSERTS BEGIN HERE--------------------------------------------------
 
 /*
@@ -399,21 +401,21 @@ VALUES ('2 Year Plan', 189.00), ('1 Year Plan', 99.00), ('Quarterly', 27.00), ('
 PRINT 'SubscriptionTypes inserts completed'
 
 INSERT Members
-VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M',  '818-873-3863', '06-29-1971', '04-07-2017', 4, 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
-('M0002', 'Katee', 'Virgie', 'Gepp', 'F',  '503-689-8066', '04-03-1972', '11-29-2017', 4, 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
-('M0003', 'Lilla', 'Charmion', 'Eatttok', 'F',  '210-426-7426', '12-13-1975', '02-26-2017', 3, 1, 'porttitor lorem id ligula suspendisse ornare consequat lectus in est risus auctor sed tristique in tempus sit amet sem fusce consequat nulla nisl nunc nisl'),
-('M0004', 'Ddene', 'Shelba', 'Clapperton', 'F',  '716-674-1640', '02-19-1997', '11-05-2017', 3, 1, 'morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien placerat ante nulla justo aliquam quis turpis'), 
-('M0005', 'Audrye', 'Agathe', 'Dawks', 'F',  '305-415-9419', '02-07-1989', '01-15-2016', 4, 1, 'nisi at nibh in hac habitasse platea dictumst aliquam augue quam sollicitudin vitae consectetuer eget rutrum at lorem integer'), 
-('M0006', 'Fredi', 'Melisandra', 'Burgyn', 'F',  '214-650-9837', '05-31-1956', '03-13-2017', 2, 1, 'congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien'), 
-('M0007', 'Dimitri', 'Francisco', 'Bellino', 'M',  '937-971-1026', '10-12-1976', '08-09-2017', 4, 1, 'eros vestibulum ac est lacinia nisi venenatis tristique fusce congue diam id ornare imperdiet sapien urna pretium'), 
-('M0008', 'Enrico', 'Cleve', 'Seeney', 'M',  '407-445-6895', '02-29-1988', '09-09-2016', 2, 1, 'dapibus duis at velit eu est congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum'), 
-('M0009', 'Marylinda', 'Jenine', 'O' + '''' + 'Siaghail', 'F',  '206-484-6850', '02-06-1965', '11-21-2016', 2, 0, 'curae duis faucibus accumsan odio curabitur convallis duis consequat dui nec nisi volutpat eleifend donec ut dolor morbi vel lectus in quam'),
-('M0010', 'Luce', 'Codi', 'Kovalski', 'M',  '253-159-6773', '03-31-1978', '12-22-2017', 4, 1, 'magna vulputate luctus cum sociis natoque penatibus et magnis dis parturient montes nascetur ridiculus mus'), 
-('M0011', 'Claiborn', 'Shadow', 'Baldinotti', 'M',  '253-141-4314', '12-26-1991', '03-19-2017', 4, 1, 'lorem integer tincidunt ante vel ipsum praesent blandit lacinia erat vestibulum sed magna at nunc commodo'), 
-('M0012', 'Isabelle', 'Betty', 'Glossop', 'F',  '412-646-5145', '02-17-1965', '04-25-2016', 3, 1, 'magna ac consequat metus sapien ut nunc vestibulum ante ipsum primis in faucibus orci luctus'), 
-('M0013', 'Davina', 'Lira', 'Wither', 'F',  '404-495-3676', '12-16-1957', '03-21-2016', 2, 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
-('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M',  '484-717-6750', '10-14-1964', '01-27-2017', 4, 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
-('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M',  '915-299-3451', '01-09-1983', '10-06-2017', 4, 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
+VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', '06-29-1971', '04-07-2017', 4, 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
+('M0002', 'Katee', 'Virgie', 'Gepp', 'F', '04-03-1972', '11-29-2017', 4, 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
+('M0003', 'Lilla', 'Charmion', 'Eatttok', 'F', '12-13-1975', '02-26-2017', 3, 1, 'porttitor lorem id ligula suspendisse ornare consequat lectus in est risus auctor sed tristique in tempus sit amet sem fusce consequat nulla nisl nunc nisl'),
+('M0004', 'Ddene', 'Shelba', 'Clapperton', 'F', '02-19-1997', '11-05-2017', 3, 1, 'morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien placerat ante nulla justo aliquam quis turpis'), 
+('M0005', 'Audrye', 'Agathe', 'Dawks', 'F', '02-07-1989', '01-15-2016', 4, 1, 'nisi at nibh in hac habitasse platea dictumst aliquam augue quam sollicitudin vitae consectetuer eget rutrum at lorem integer'), 
+('M0006', 'Fredi', 'Melisandra', 'Burgyn', 'F', '05-31-1956', '03-13-2017', 2, 1, 'congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum neque sapien'), 
+('M0007', 'Dimitri', 'Francisco', 'Bellino', 'M', '10-12-1976', '08-09-2017', 4, 1, 'eros vestibulum ac est lacinia nisi venenatis tristique fusce congue diam id ornare imperdiet sapien urna pretium'), 
+('M0008', 'Enrico', 'Cleve', 'Seeney', 'M', '02-29-1988', '09-09-2016', 2, 1, 'dapibus duis at velit eu est congue elementum in hac habitasse platea dictumst morbi vestibulum velit id pretium iaculis diam erat fermentum justo nec condimentum'), 
+('M0009', 'Marylinda', 'Jenine', 'O' + '''' + 'Siaghail', 'F', '02-06-1965', '11-21-2016', 2, 0, 'curae duis faucibus accumsan odio curabitur convallis duis consequat dui nec nisi volutpat eleifend donec ut dolor morbi vel lectus in quam'),
+('M0010', 'Luce', 'Codi', 'Kovalski', 'M', '03-31-1978', '12-22-2017', 4, 1, 'magna vulputate luctus cum sociis natoque penatibus et magnis dis parturient montes nascetur ridiculus mus'), 
+('M0011', 'Claiborn', 'Shadow', 'Baldinotti', 'M', '12-26-1991', '03-19-2017', 4, 1, 'lorem integer tincidunt ante vel ipsum praesent blandit lacinia erat vestibulum sed magna at nunc commodo'), 
+('M0012', 'Isabelle', 'Betty', 'Glossop', 'F', '02-17-1965', '04-25-2016', 3, 1, 'magna ac consequat metus sapien ut nunc vestibulum ante ipsum primis in faucibus orci luctus'), 
+('M0013', 'Davina', 'Lira', 'Wither', 'F', '12-16-1957', '03-21-2016', 2, 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
+('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M', '10-14-1964', '01-27-2017', 4, 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
+('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M', '01-09-1983', '10-06-2017', 4, 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
 
 PRINT 'Members inserts completed'
 
@@ -637,6 +639,20 @@ VALUES ('bfallon0@artisteer.com', 'M0001'), ('vgepp1@nih.gov', 'M0002'), ('ceatt
 
 PRINT 'MemberEmail inserts completed.'
 
+INSERT MemberPhone
+VALUES ('818-873-3863', 'M0001', NULL), ('503-689-8066', 'M0002', NULL), ('210-426-7426', 'M0003', NULL), 
+('716-674-1640', 'M0004', NULL), ('305-415-9419', 'M0005', NULL), ('214-650-9837', 'M0006', NULL), 
+('937-971-1026', 'M0007', NULL), ('407-445-6895', 'M0008', NULL), ('206-484-6850', 'M0009', NULL), 
+('253-159-6773', 'M0010', NULL), ('253-141-4314', 'M0011', NULL), ('412-646-5145', 'M0012', NULL), 
+('404-495-3676', 'M0013', NULL), ('484-717-6750', 'M0014', NULL), ('915-299-3451', 'M0015', NULL)
+
+INSERT MemberLoginInfo
+VALUES ('M0001', 'bfallon0@artisteer.com', '0x6FDE671F0A9FE8464E56B7437AA421B5'), ('M0002', 'vgepp1@nih.gov', '0xC77BF39F89640A6AEB1DA2AB34F1EF0C'), ('M0003', 'ceatttok2@google.com.br', '0x8F7C8C3380036FF264DF94A88F1B88C4'),
+('M0004', 'sclapperton3@mapquest.com', '0xDB0D094E24D4AB4A27AC52E37E05E06A'), ('M0005', 'adawks4@mlb.com', '0xA217631C403F14D4481D91E3A171C68E'), ('M0006', 'mburgyn5@cbslocal.com', '0xD24E184228E9F8371C0F7B190D4841EB'), 
+('M0007', 'fbellino6@devhub.com', '0x48850EC0E8FB821ACD0BA7466F70C929'), ('M0008', 'cseeney7@macromedia.com', '0xEAE7D9562FDFF6006045B871AB06A374'), ('M0009', 'josiaghail8@tuttocitta.it', '0x329BE5577BE302F648A22F2D7CA69CFB'), 
+('M0010', 'ckovalski9@facebook.com', '0xE93F77ABA9EB9257D927E6C71DB5C23D'), ('M0011', 'sbaldinottia@discuz.net', '0x42F92EBA8E2901306C96E5C8C000BC25'), ('M0012', 'bglossopb@msu.edu', '0x856D9E07FF9DC93027FE33C4AA1FA7EB'), 
+('M0013', 'lwitherc@smugmug.com', '0x144CB675F03640D68F2D3E8399D38A32'), ('M0014', 'hdegregoriod@a8.net', '0x586086033FD654F28626BFC31DA055B0'), ('M0015', 'abirdfielde@over-blog.com', '0x4E7A0E62373AAD8225F85EF86CC73976') 
+
 GO
 
 /*
@@ -694,12 +710,14 @@ GO
 For this functional requirement ("A complete contact list for current members with name, physical mailing address, phone number and e-mail."),
 I used a view, as it seems like something that would not only be used at near-random intervals, but quite often as well, and chances are work
 would need to be done with them, all of which a view is good for. In essence, it's just a simple query: join the Members table with the 
-Addresses table, the MemberEmail table, and the MemberPhone table
+Addresses table, the MemberEmail table, and the MemberPhone table. From these it retrieves the full name of the members, all address info
+except for the billing address, their phone and email, and it ensures that it only retrieves current members in the WHERE clause by only 
+accepting members that don't have their Current column value be 0.
 */
 CREATE VIEW [dbo].[CurrentMemberContact]
 AS
 
-SELECT M.MemberID, FirstName, MiddleName, LastName, MailAddress, City, [State], ZIPCode, Phone, Email
+SELECT M.MemberID, FirstName, MiddleName, LastName, MailAddress, City, [State], ZIPCode, PhoneNumber, Email
 FROM Members M
 INNER JOIN Addresses A
 ON M.MemberID = A.MemberID
@@ -749,6 +767,12 @@ GO
 PRINT 'New Monthly Sign Ups stored procedure created'
 GO
 
+/*
+A very simple view meets the requirements for the functional requirement "An e-mail list with the member name and e-mail." It joins the 
+Members table with the MemberEmail table and retrieves the member's full name and email, and makes sure only current members are retrieved
+in the WHERE clause.
+*/
+
 CREATE VIEW [dbo].[MemberEmails]
 AS
 
@@ -760,31 +784,218 @@ WHERE [Current] <> 0
 
 GO
 
+PRINT 'Member Email list view created.'
 
 
---SELECT DATEDIFF(MONTH, 0, JoinDate)
---FROM Members
---SELECT JoinDate
---FROM Members
---GO
+GO
+/*
+Alright, here's a big one. This is for the dreaded # 4 requirement: A solution for scheduled billing of members on the appropriate 
+anniversary of the date they joined. To start off, I created a view to get together all of the information from the different tables that's
+needed to properly insert a new record into both the Transactions table and the AccountCharges table. The first section of the view collects
+everyone that has a monthly subscription, retrieving their ID, full name, the date they joined, what kind of subscription they have and
+what it costs, and columns for all of the different ways they could be paying. The WHERE clause ensures that the Current flag is definitely
+not false (so it only retrieves current members), the member has a monthly subscription (4 is the ID for a monthly subscription), and it
+checks that today is the same day of the month as the day the member joined.
+*/
+CREATE VIEW [dbo].[RenewalList]
+AS
 
---CREATE VIEW [dbo].[RenewalList]
---AS
---SELECT
---FROM Members
+SELECT	M.MemberID, M.FirstName, M.MiddleName, M.LastName, M.JoinDate, M.SubscriptionLevel, ST.PlanPrice, 
+		CP.CardNumber, OP.AccountNumber, OP.AccountEmail 
+FROM Members M
+INNER JOIN SubscriptionTypes ST
+ON ST.SubID = M.SubscriptionLevel
+LEFT JOIN CardPayment CP
+ON CP.MemberID = M.MemberID
+LEFT JOIN OtherPayment OP
+ON OP.MemberID = M.MemberID
+WHERE M.[Current] <> 0 AND DATEPART(DAY, M.JoinDate) = DATEPART(DAY, GETDATE()) AND M.SubscriptionLevel = 4
 
---CREATE PROC sp_BillRenewal
---AS
---BEGIN
---	IF (SELECT JoinDate FROM Members) =  (SELECT CAST(GETDATE() AS DATE))
---		BEGIN
+UNION ALL
+
+/*
+All of the above is repeated again with some slight variations, and a full union is performed between the SELECT statements. What's 
+different inbetween the two is that this next one is geared towards quarterly subscriptions (hence the 3), so it still gets the same day, 
+but now it also checks if the current month is the same month as one of the months that are 3, 6, or 9 months ahead of the month that 
+a member joined in.
+*/
+
+SELECT	M.MemberID, FirstName, MiddleName, LastName, JoinDate, SubscriptionLevel, PlanPrice, 
+		CardNumber, AccountNumber, AccountEmail
+FROM Members M
+INNER JOIN SubscriptionTypes ST
+ON ST.SubID = M.SubscriptionLevel
+LEFT JOIN CardPayment CP
+ON CP.MemberID = M.MemberID
+LEFT JOIN OtherPayment OP
+ON OP.MemberID = M.MemberID
+WHERE [Current] <> 0 AND DATEPART(DAY, JoinDate) = DATEPART(DAY, GETDATE()) AND SubscriptionLevel = 3 
+	AND DATEPART(MONTH, GETDATE()) IN ((SELECT (DATEPART(MONTH, M.JoinDate) + 3)), (SELECT (DATEPART(MONTH, JoinDate) + 6)),
+  (SELECT (DATEPART(MONTH, JoinDate) + 9)))
+
+UNION ALL 
+/*
+Similar to the other ones, except it's simpler with this one. All it checks is that the current month and day is the same as the date the
+member joined, which logically should mean that it will be renewed every year on the same day.
+*/
+  SELECT	M.MemberID, FirstName, MiddleName, LastName, JoinDate, SubscriptionLevel, PlanPrice, 
+		CardNumber, AccountNumber, AccountEmail
+FROM Members M
+INNER JOIN SubscriptionTypes ST
+ON ST.SubID = M.SubscriptionLevel
+LEFT JOIN CardPayment CP
+ON CP.MemberID = M.MemberID
+LEFT JOIN OtherPayment OP
+ON OP.MemberID = M.MemberID
+
+WHERE [Current] <> 0 AND DATEPART(DAY, JoinDate) = DATEPART(DAY, GETDATE()) AND SubscriptionLevel = 2
+AND DATEPART(MONTH, GETDATE()) = DATEPART(MONTH, M.JoinDate)
+
+UNION ALL
+/*
+This last union is probably the most complicated out of all of the SELECT statements in this, but not by much. This one does the same
+as all of the other SELECT statements, except now it searches for bi-yearly subscriptions, hence the 1 in the WHERE clause. Like the yearly
+subscription, it ensures that the day and month are the same, but now it has an added layer to it that checks the year of both the current
+date and the member's join date with a modulus of 2, essentially checking if a year is divisible by 2. If it returns 1, it's an odd number;
+if it returns 0, it's an even number. This guarantees that a customer will only show up in this if it's been some interval of 2 years since
+they joined. I checked this with both even and odd numbers by changing the join date of one of the members to 2 years ago, and then changing
+GETDATE() to a date in 2017, and it indeed worked.
+*/
+SELECT	M.MemberID, FirstName, MiddleName, LastName, JoinDate, SubscriptionLevel, PlanPrice, 
+		CardNumber, AccountNumber, AccountEmail
+FROM Members M
+INNER JOIN SubscriptionTypes ST
+ON ST.SubID = M.SubscriptionLevel
+LEFT JOIN CardPayment CP
+ON CP.MemberID = M.MemberID
+LEFT JOIN OtherPayment OP
+ON OP.MemberID = M.MemberID
+WHERE [Current] <> 0 AND DATEPART(DAY, JoinDate) = DATEPART(DAY, GETDATE()) AND SubscriptionLevel = 1
+AND DATEPART(MONTH, GETDATE()) = DATEPART(MONTH, M.JoinDate) AND (CAST(DATEPART(YEAR, GETDATE())AS INT) % 2) = 
+																	(CAST(DATEPART(YEAR, JoinDate)AS INT) % 2)
 
 
---		END
+GO
+
+/*
+And now for the big stored procedure. I tried approaching this from a lot of different directions, but I finally got it to work. To start
+off, I took the results from the view I created in the last step, and put it into a temporary table with a variable-turned-column that
+functions as a flag for members that have yet to have their subscription renewed so I could have a while loop that keeps running through 
+what needs to be renewed. While there's anyone in the temp table that hasn't been updated, it runs through everyone that has yet to be updated,
+retrieves the top row of people with a certain pay type (first credit cards, then bank accounts, and finally online pay services), then 
+inserts the relevant info into the Transactions table: the date of the transaction (today), which member is being renewed, and then it just
+goes to a transaction status of "Pending". 
+
+After that it goes into the AccountCharges table, retrieves the ID of the transaction entry I just created (which is primarily why this goes
+through one entry at a time instead of doing all of the entries at once, as SCOPE_IDENTITY can't really retrieve a group of ID's), the date
+of the charge (today), the price for the member's subscription that's being focused on right now, their card number, and finally a couple 
+of system functions, ROUND and RAND that takes the result of RAND and rounds it to either 0 or 1 to decide whether the charge to the 
+member's account was successful or not. The procedure is basically all of what I just described (or... most of it. The temp table isn't 
+recreated 3 times, for example), and doing it 3 times, once for each paytype. Since this one was more complicated than the rest of the
+functional requirements, I left what I used to check if it was working down below this stored procedure.
+*/
+
+CREATE PROC sp_BillRenewal
+AS
+BEGIN
+	DECLARE @ToBeRenewed BIT = 1
+	SELECT L.*,  @ToBeRenewed [ToBeRenewed]
+	INTO #RenewalUpdates 
+	FROM RenewalList L
+	
+	WHILE EXISTS (SELECT * FROM #RenewalUpdates WHERE ToBeRenewed <> 0)
+		BEGIN
+			WHILE (SELECT TOP 1 CardNumber FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND CardNumber IS NOT NULL) IS NOT NULL
+			BEGIN
+				INSERT Transactions
+				VALUES (GETDATE(), (SELECT TOP 1 MemberID FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND CardNumber IS NOT NULL), 'Pending')
+				INSERT AccountCharges
+				VALUES (SCOPE_IDENTITY(), GETDATE(), 
+						(SELECT TOP 1 PlanPrice FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND CardNumber IS NOT NULL), 
+						(SELECT TOP 1 CardNumber FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND CardNumber IS NOT NULL), ROUND(RAND(), 0))
+				UPDATE TOP (1) #RenewalUpdates 
+				SET ToBeRenewed = 0
+				WHERE CardNumber IS NOT NULL
+				
+			END 
+			WHILE (SELECT TOP 1 AccountNumber FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountNumber IS NOT NULL) IS NOT NULL
+			BEGIN
+				INSERT Transactions
+				VALUES (GETDATE(), (SELECT TOP 1 MemberID FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountNumber IS NOT NULL), 'Pending')
+				INSERT AccountCharges
+				VALUES (SCOPE_IDENTITY(), GETDATE(), 
+						(SELECT TOP 1 PlanPrice FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountNumber IS NOT NULL), 
+						(SELECT TOP 1 AccountNumber FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountNumber IS NOT NULL), ROUND(RAND(), 0))
+				UPDATE TOP (1) #RenewalUpdates 
+				SET ToBeRenewed = 0
+				WHERE AccountNumber IS NOT NULL
+				
+			END 
+			WHILE (SELECT TOP 1 AccountEmail FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountEmail IS NOT NULL) IS NOT NULL
+			BEGIN
+				INSERT Transactions
+				VALUES (GETDATE(), (SELECT TOP 1 MemberID FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountEmail IS NOT NULL), 'Pending')
+				INSERT AccountCharges
+				VALUES (SCOPE_IDENTITY(), GETDATE(), 
+						(SELECT TOP 1 PlanPrice FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountEmail IS NOT NULL), 
+						(SELECT TOP 1 AccountEmail FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountEmail IS NOT NULL), ROUND(RAND(), 0))
+				UPDATE TOP (1) #RenewalUpdates 
+				SET ToBeRenewed = 0
+				WHERE AccountEmail IS NOT NULL
+				
+			END 
+			
+		END
+		
+END
+
+GO  
+
+/*
+After running the script, you can uncomment the update and insert statements, and then I suggest running each one of those statements 
+below individually, and the JoinDate in the update statement and the JoinDate in the insert statement (1-12-2018) should be updated to reflect
+whatever day you're running this.
+*/
+
+--UPDATE Members
+--SET JoinDate = '02-12-2017'
+--WHERE MemberID = 'M0006'
+--INSERT Members
+--VALUES ('M0016', 'test', 'test', 'test', 'M', '01-01-2001', '01-12-2018', 4, 1, NULL)
+--INSERT OtherPayment
+--VALUES ('M0016', 'Bank', 'F234215890P367', NULL)
+
+--SELECT * FROM RenewalList ORDER BY MemberID
+
+--EXEC sp_BillRenewal
+
+--SELECT * FROM Transactions T INNER JOIN AccountCharges A ON A.TranID = T.TranID WHERE MemberID IN ('M0006', 'M0016')
 
 
+/*
+This next table-valued function is for the functional requirement of "We need to see the company's monthly income from member payments 
+over a given time frame." I used a table-valued function because I needed to have parameters, but this information seems like information
+that would need to be modified or worked with every once in a while, so a table-valued function fits that best. Now how it works is very
+similar (in fact, almost exactly the same) to the earlier stored procedure that retrieves how many members signed up per month. It retrieves
+the month in the same manner, just using the TransactionDate column in the Transactions table instead. To retrieve 
+*/
 
---END
+GO
+CREATE FUNCTION fn_MonthlyIncome
+(
+@BeginDate DATE,
+@EndDate DATE
+)
+RETURNS TABLE
+AS
+RETURN
+SELECT CAST(DATEADD(MONTH, DATEDIFF(MONTH, 0, MAX(TransactionDate)), 0) AS DATE) [Month], SUM(ChargeTotal) [Income]
+	FROM Transactions T
+	INNER JOIN AccountCharges A
+	ON A.TranID = T.TranID
+	WHERE TransactionDate BETWEEN @BeginDate AND @EndDate AND Result = 'Approved' AND Success <> 0
+	GROUP BY DATEPART(MONTH, TransactionDate), DATEPART(YEAR, TransactionDate)
 
---GO
+GO
+
 
