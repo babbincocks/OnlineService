@@ -294,7 +294,8 @@ CREATE TABLE MemberLoginInfo
 PassID INT IDENTITY(1,1),
 MemberID VARCHAR(10),
 [Login] VARCHAR(70) NOT NULL,
-PasswordHash VARCHAR(40) NOT NULL
+PasswordHash VARCHAR(40) NOT NULL,
+ChangeDate DATE NOT NULL 
 
 CONSTRAINT PK_PassID PRIMARY KEY (PassID, MemberID),
 CONSTRAINT FK_Login_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
@@ -388,18 +389,47 @@ PRINT 'AccountID check trigger on the AccountCharges table created'
 
 GO
 
+/*
+This trigger is one of the functional requirements for the database: The database should identify expired credit cards before it tries to 
+bill to them. This trigger is set off whenever something is inserted into the AccountCharges table, and connects it to the CardPayment
+table to check if the expiration date of the card that was just inserted/updated is less than today's date. If so, it raises an error, and
+cancels out of the transactions. Since the other triggers set the AccountCharges table up to only have credit card numbers or other payment
+type identifiers in this, this should work (and testing it with a later procedure showed that it did indeed work).
+*/
+
+CREATE TRIGGER trg_ExpiredCardCharge
+ON AccountCharges
+AFTER INSERT, UPDATE
+AS
+BEGIN
+
+	IF (SELECT ExpirationDate FROM inserted i INNER JOIN CardPayment C ON C.CardNumber = i.AccountIdentification) < GETDATE()
+	BEGIN
+	RAISERROR ('This card is expired. A new card will need to be used before any charges can be made.', 16, 1)
+	ROLLBACK TRAN
+	END
+
+END
+
+PRINT 'Expired Card trigger created.'
+
+--UPDATE CardPayment
+--SET ExpirationDate = '02-01-2018'
+--WHERE MemberID = 'M0006'
+
+
 --------------------------------------------INSERTS BEGIN HERE--------------------------------------------------
 
 /*
 All of my inserts go in pretty much the same order the tables they belong to were created in for the same reason: foreign key constraints.
 They don't really require explaining, as that's already been covered.
 */
-
+GO
 INSERT SubscriptionTypes
 VALUES ('2 Year Plan', 189.00), ('1 Year Plan', 99.00), ('Quarterly', 27.00), ('Monthly', 9.99), ('Free', 0.00)
-
+GO
 PRINT 'SubscriptionTypes inserts completed'
-
+GO
 INSERT Members
 VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', '06-29-1971', '04-07-2017', 4, 1, 'nascetur ridiculus mus etiam vel augue vestibulum rutrum rutrum neque aenean auctor gravida sem praesent id'),
 ('M0002', 'Katee', 'Virgie', 'Gepp', 'F', '04-03-1972', '11-29-2017', 4, 1, 'a pede posuere nonummy integer non velit donec diam neque vestibulum eget vulputate ut ultrices vel augue vestibulum ante ipsum primis in faucibus'),
@@ -416,9 +446,9 @@ VALUES ('M0001', 'Otis', 'Brooke', 'Fallon', 'M', '06-29-1971', '04-07-2017', 4,
 ('M0013', 'Davina', 'Lira', 'Wither', 'F', '12-16-1957', '03-21-2016', 2, 1, 'bibendum felis sed interdum venenatis turpis enim blandit mi in porttitor pede justo eu massa donec dapibus duis at'), 
 ('M0014', 'Panchito', 'Hashim', 'De Gregorio', 'M', '10-14-1964', '01-27-2017', 4, 1, 'imperdiet sapien urna pretium nisl ut volutpat sapien arcu sed augue aliquam erat volutpat in congue etiam justo etiam pretium iaculis justo in hac habitasse'), 
 ('M0015', 'Rowen', 'Arvin', 'Birdfield', 'M', '01-09-1983', '10-06-2017', 4, 0, 'etiam pretium iaculis justo in hac habitasse platea dictumst etiam faucibus cursus urna ut tellus nulla ut erat id mauris vulputate elementum nullam varius') 
-
+GO
 PRINT 'Members inserts completed'
-
+GO
 INSERT CardPayment
 VALUES ( 'M0001', 'AmericanExpress', 337941553240515, 4623, '09-01-2019'), ( 'M0002', 'Visa', 4041372553875903, 6232, '01-01-2020'), 
 ( 'M0003', 'Visa', 4041593962566, 7654, '03-01-2019'), ( 'M0004', 'JCB', 3559478087149594, 9265, '04-01-2019'), 
@@ -428,26 +458,26 @@ VALUES ( 'M0001', 'AmericanExpress', 337941553240515, 4623, '09-01-2019'), ( 'M0
 ( 'M0011', 'MasterCard', 5108756299877313, 3677, '07-01-2018'), ( 'M0012', 'JCB', 3543168150106220, 4648, '06-01-2018'), 
 ( 'M0013', 'JCB', 3559166521684728, 3542, '10-01-2019'), ( 'M0014', 'Diners-Club-Carte-Blanche', 30414677064054, 0695, '06-01-2018'), 
 ( 'M0015', 'JCB', 3542828093985763, 1357, '03-01-2020')
-
+GO
 PRINT 'CardPayment inserts completed'
-
+GO
 
 INSERT Interests (Interest)
 VALUES ('Acting'), ('Video Games'), ('Crossword Puzzles'), ('Calligraphy'), ('Movies'), ('Restaurants'), ('Woodworking'), 
 ('Juggling'), ('Quilting'), ('Electronics'), ('Sewing'), ('Cooking'), ('Botany'), ('Skating'), ('Dancing'), 
 ('Coffee'), ('Foreign Languages'), ('Fashion'), ('Homebrewing'), ('Geneology'), ('Scrapbooking'), ('Surfing'), 
 ('Amateur Radio'), ('Computers'), ('Writing'), ('Singing'), ('Reading'), ('Pottery') 
-
+GO
 PRINT 'Interests inserts completed'
-
+GO
 INSERT MemberInterests
 VALUES ('M0001', 1), ('M0001', 2), ('M0001', 3), ('M0002', 4), ('M0003', 5), ('M0003', 6), ('M0003', 7), 
 ('M0004', 8), ('M0004', 9), ('M0005', 10), ('M0006', 11), ('M0006', 12), ('M0006', 5), ('M0007', 13), ('M0007', 14), 
 ('M0008', 15), ('M0008', 16), ('M0008', 17), ('M0009', 18), ('M0010', 7), ('M0011', 19), ('M0011', 20), ('M0011', 21), 
 ('M0011', 5), ('M0012', 22), ('M0012', 23), ('M0013', 24), ('M0014', 25), ('M0014', 26), ('M0015', 27), ('M0015', 28) 
-
+GO
 PRINT 'MemberInterests inserts completed'
-
+GO
 INSERT Addresses
 VALUES ( 'M0001', '020 New Castle Way', NULL, 'Port Washington', 'New York', '11054'), 
 ( 'M0002', '8 Corry Parkway', 'P.O. Box 7088', 'Newton', 'Massachusetts', '2458'), 
@@ -464,9 +494,9 @@ VALUES ( 'M0001', '020 New Castle Way', NULL, 'Port Washington', 'New York', '11
 ( 'M0013', '3 Lakewood Gardens Circle', NULL, 'Columbia', 'South Carolina', '29225'), 
 ( 'M0014', '198 Muir Parkway', NULL, 'Fairfax', 'Virginia', '22036'), 
 ( 'M0015', '258 Jenna Drive', NULL, 'Pensacola', 'Florida', '32520')
-
+GO
 PRINT 'Addresses inserts completed'
-
+GO
 INSERT [Events]
 VALUES 
 ('The History of Human Emotions', 'Tiffany', 'Watt', 'Smith', '01-12-2017'), 
@@ -474,9 +504,9 @@ VALUES
 ('The Puzzle of Motivation', 'Dan', NULL, 'Pink', '03-05-2017'), 
 ('Your Elusive Creative Genius', 'Elizabeth', NULL, 'Gilbert', '04-16-2017'), 
 ('Why are Programmers So Smart?', 'Andrew', NULL, 'Comeau', '05-01-2017') 
-
+GO
 PRINT 'Events inserts completed'
-
+GO
 
 INSERT MemberEvents
 VALUES ('M0001', 3), ('M0001', 4), ('M0001', 5), ('M0002', 1), ('M0002', 3), ('M0002', 4), ('M0003', 1), ('M0003', 2), 
@@ -486,9 +516,9 @@ VALUES ('M0001', 3), ('M0001', 4), ('M0001', 5), ('M0002', 1), ('M0002', 3), ('M
 ('M0010', 1), ('M0010', 2), ('M0011', 1), ('M0011', 2), ('M0012', 1), ('M0012', 3), ('M0012', 4), ('M0012', 5), 
 ('M0013', 1), ('M0013', 2), ('M0013', 5), ('M0014', 2), ('M0014', 3), ('M0014', 4), ('M0015', 1), ('M0015', 2), 
 ('M0015', 3), ('M0015', 4)
-
+GO
 PRINT 'MemberEvents inserts completed'
-
+GO
 INSERT Transactions
 VALUES ( '01-15-2016', 'M0005', 'Approved'), ( '02-15-2016', 'M0005', 'Approved'), 
 ('03-15-2016','M0005','Approved'), ('03-21-2016','M0013','Approved'), ('04-15-2016','M0005','Approved'), 
@@ -521,9 +551,9 @@ VALUES ( '01-15-2016', 'M0005', 'Approved'), ( '02-15-2016', 'M0005', 'Approved'
 ('12-29-2017','M0002','Approved'), ('01-07-2018','M0001','Approved'), ('01-09-2018','M0007','Approved'), 
 ('01-15-2018','M0005','Approved'), ('01-19-2018','M0011','Approved'), ('01-22-2018','M0010','Approved'), 
 ('01-25-2018','M0012','Approved'), ('01-27-2018','M0014','Approved')
-
+GO
 PRINT 'Transactions inserts completed'
-
+GO
 /*
 The only insert worth explaining a bit about is this insert. Due to the trigger I set up on the AccountCharges table,
 multiple entries can't be made at once, like the other inserts were. As such, I set them up to insert individually. I don't think
@@ -627,33 +657,39 @@ INSERT AccountCharges VALUES (88, '2018-01-19', 9.99, '5108756299877313', 1)
 INSERT AccountCharges VALUES (89, '2018-01-22', 9.99, '3530142576111598', 1) 
 INSERT AccountCharges VALUES (90, '2018-01-25', 27.00, '3543168150106220', 1) 
 INSERT AccountCharges VALUES (91, '2018-01-27', 9.99, '30414677064054', 1)
-
+GO
 PRINT 'AccountCharges inserts completed.'
-
+GO
 INSERT MemberEmail
 VALUES ('bfallon0@artisteer.com', 'M0001'), ('vgepp1@nih.gov', 'M0002'), ('ceatttok2@google.com.br', 'M0003'), 
 ('sclapperton3@mapquest.com', 'M0004'), ('adawks4@mlb.com', 'M0005'), ('mburgyn5@cbslocal.com', 'M0006'), 
 ('fbellino6@devhub.com', 'M0007'), ('cseeney7@macromedia.com', 'M0008'), ('josiaghail8@tuttocitta.it', 'M0009'), 
 ('ckovalski9@facebook.com', 'M0010'), ('sbaldinottia@discuz.net', 'M0011'), ('bglossopb@msu.edu', 'M0012'), 
 ('lwitherc@smugmug.com', 'M0013'), ('hdegregoriod@a8.net', 'M0014'), ('abirdfielde@over-blog.com', 'M0015')
-
+GO
 PRINT 'MemberEmail inserts completed.'
-
+GO
 INSERT MemberPhone
 VALUES ('818-873-3863', 'M0001', NULL), ('503-689-8066', 'M0002', NULL), ('210-426-7426', 'M0003', NULL), 
 ('716-674-1640', 'M0004', NULL), ('305-415-9419', 'M0005', NULL), ('214-650-9837', 'M0006', NULL), 
 ('937-971-1026', 'M0007', NULL), ('407-445-6895', 'M0008', NULL), ('206-484-6850', 'M0009', NULL), 
 ('253-159-6773', 'M0010', NULL), ('253-141-4314', 'M0011', NULL), ('412-646-5145', 'M0012', NULL), 
 ('404-495-3676', 'M0013', NULL), ('484-717-6750', 'M0014', NULL), ('915-299-3451', 'M0015', NULL)
-
-INSERT MemberLoginInfo
-VALUES ('M0001', 'bfallon0@artisteer.com', '0x6FDE671F0A9FE8464E56B7437AA421B5'), ('M0002', 'vgepp1@nih.gov', '0xC77BF39F89640A6AEB1DA2AB34F1EF0C'), ('M0003', 'ceatttok2@google.com.br', '0x8F7C8C3380036FF264DF94A88F1B88C4'),
-('M0004', 'sclapperton3@mapquest.com', '0xDB0D094E24D4AB4A27AC52E37E05E06A'), ('M0005', 'adawks4@mlb.com', '0xA217631C403F14D4481D91E3A171C68E'), ('M0006', 'mburgyn5@cbslocal.com', '0xD24E184228E9F8371C0F7B190D4841EB'), 
-('M0007', 'fbellino6@devhub.com', '0x48850EC0E8FB821ACD0BA7466F70C929'), ('M0008', 'cseeney7@macromedia.com', '0xEAE7D9562FDFF6006045B871AB06A374'), ('M0009', 'josiaghail8@tuttocitta.it', '0x329BE5577BE302F648A22F2D7CA69CFB'), 
-('M0010', 'ckovalski9@facebook.com', '0xE93F77ABA9EB9257D927E6C71DB5C23D'), ('M0011', 'sbaldinottia@discuz.net', '0x42F92EBA8E2901306C96E5C8C000BC25'), ('M0012', 'bglossopb@msu.edu', '0x856D9E07FF9DC93027FE33C4AA1FA7EB'), 
-('M0013', 'lwitherc@smugmug.com', '0x144CB675F03640D68F2D3E8399D38A32'), ('M0014', 'hdegregoriod@a8.net', '0x586086033FD654F28626BFC31DA055B0'), ('M0015', 'abirdfielde@over-blog.com', '0x4E7A0E62373AAD8225F85EF86CC73976') 
+GO
+PRINT 'MemberPhone inserts completed.'
+GO
+INSERT MemberLoginInfo 
+VALUES ('M0001', 'bfallon0@artisteer.com', '0x6FDE671F0A9FE8464E56B7437AA421B5', '02-01-2018'), ('M0002', 'vgepp1@nih.gov', '0xC77BF39F89640A6AEB1DA2AB34F1EF0C', '02-10-2018'), ('M0003', 'ceatttok2@google.com.br', '0x8F7C8C3380036FF264DF94A88F1B88C4', '02-05-2018'),
+('M0004', 'sclapperton3@mapquest.com', '0xDB0D094E24D4AB4A27AC52E37E05E06A', '01-30-2018'), ('M0005', 'adawks4@mlb.com', '0xA217631C403F14D4481D91E3A171C68E', '01-26-2018'), ('M0006', 'mburgyn5@cbslocal.com', '0xD24E184228E9F8371C0F7B190D4841EB', '02-01-2018'), 
+('M0007', 'fbellino6@devhub.com', '0x48850EC0E8FB821ACD0BA7466F70C929', '02-02-2018'), ('M0008', 'cseeney7@macromedia.com', '0xEAE7D9562FDFF6006045B871AB06A374', '01-22-2018'), ('M0009', 'josiaghail8@tuttocitta.it', '0x329BE5577BE302F648A22F2D7CA69CFB', '01-27-2018'), 
+('M0010', 'ckovalski9@facebook.com', '0xE93F77ABA9EB9257D927E6C71DB5C23D', '02-01-2018'), ('M0011', 'sbaldinottia@discuz.net', '0x42F92EBA8E2901306C96E5C8C000BC25', '02-08-2018'), ('M0012', 'bglossopb@msu.edu', '0x856D9E07FF9DC93027FE33C4AA1FA7EB', '02-03-2018'), 
+('M0013', 'lwitherc@smugmug.com', '0x144CB675F03640D68F2D3E8399D38A32', '01-16-2018'), ('M0014', 'hdegregoriod@a8.net', '0x586086033FD654F28626BFC31DA055B0', '01-27-2018'), ('M0015', 'abirdfielde@over-blog.com', '0x4E7A0E62373AAD8225F85EF86CC73976', '02-02-2018') 
+GO
+PRINT 'Member LoginInfo inserts completed.'
 
 GO
+
+-----------------------------END OF INSERTS----------------------------------------
 
 /*
 Here's my first functional requirement fulfilled: "Attendance per event over a given time frame. (Number of members at each event.)"
@@ -877,6 +913,8 @@ AND DATEPART(MONTH, GETDATE()) = DATEPART(MONTH, M.JoinDate) AND (CAST(DATEPART(
 
 GO
 
+PRINT 'Preliminary view for Subscription Renewal stored procedure created.'
+
 /*
 And now for the big stored procedure. I tried approaching this from a lot of different directions, but I finally got it to work. To start
 off, I took the results from the view I created in the last step, and put it into a temporary table with a variable-turned-column that
@@ -894,6 +932,7 @@ member's account was successful or not. The procedure is basically all of what I
 recreated 3 times, for example), and doing it 3 times, once for each paytype. Since this one was more complicated than the rest of the
 functional requirements, I left what I used to check if it was working down below this stored procedure.
 */
+GO
 
 CREATE PROC sp_BillRenewal
 AS
@@ -917,7 +956,7 @@ BEGIN
 				SET ToBeRenewed = 0
 				WHERE CardNumber IS NOT NULL
 				
-			END 
+			END
 			WHILE (SELECT TOP 1 AccountNumber FROM #RenewalUpdates WHERE ToBeRenewed <> 0 AND AccountNumber IS NOT NULL) IS NOT NULL
 			BEGIN
 				INSERT Transactions
@@ -951,6 +990,7 @@ END
 
 GO  
 
+PRINT 'Subscription Renewal stored procedure created.'
 /*
 After running the script, you can uncomment the update and insert statements, and then I suggest running each one of those statements 
 below individually, and the JoinDate in the update statement and the JoinDate in the insert statement (1-12-2018) should be updated to reflect
