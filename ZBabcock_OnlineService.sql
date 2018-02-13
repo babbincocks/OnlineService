@@ -295,7 +295,7 @@ PassID INT IDENTITY(1,1),
 MemberID VARCHAR(10),
 [Login] VARCHAR(70) NOT NULL,
 PasswordHash VARCHAR(40) NOT NULL,
-ChangeDate DATE NOT NULL 
+ChangeDate DATE NOT NULL
 
 CONSTRAINT PK_PassID PRIMARY KEY (PassID, MemberID),
 CONSTRAINT FK_Login_Members FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
@@ -1017,7 +1017,10 @@ This next table-valued function is for the functional requirement of "We need to
 over a given time frame." I used a table-valued function because I needed to have parameters, but this information seems like information
 that would need to be modified or worked with every once in a while, so a table-valued function fits that best. Now how it works is very
 similar (in fact, almost exactly the same) to the earlier stored procedure that retrieves how many members signed up per month. It retrieves
-the month in the same manner, just using the TransactionDate column in the Transactions table instead. To retrieve 
+the month in the same manner, just using the TransactionDate column in the Transactions table instead. To retrieve how much the company
+made in the month, it groups by the Month and then the Year of the TransactionDate column and sums together all of the totals
+of the charges. To ensure that it doesn't also pick up on failed charge attempts, the WHERE clause specifies that the Result
+in the Transactions table is set to "Approved", and the Success flag in AccountCharges is not 0.
 */
 
 GO
@@ -1037,5 +1040,4 @@ SELECT CAST(DATEADD(MONTH, DATEDIFF(MONTH, 0, MAX(TransactionDate)), 0) AS DATE)
 	GROUP BY DATEPART(MONTH, TransactionDate), DATEPART(YEAR, TransactionDate)
 
 GO
-
 
