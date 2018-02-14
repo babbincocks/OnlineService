@@ -103,7 +103,7 @@ CREATE TABLE Interests
 (
 InterestID INT IDENTITY(1,1),
 Interest VARCHAR(40) NOT NULL
-CONSTRAINT PK_InterestID PRIMARY KEY (InterestID),
+CONSTRAINT PK_InterestID PRIMARY KEY CLUSTERED (InterestID),
 CONSTRAINT UC_Interest UNIQUE (Interest)
 )
 
@@ -213,6 +213,37 @@ CONSTRAINT FK_Charges_Transactions FOREIGN KEY (TranID) REFERENCES Transactions(
 
 PRINT 'AccountCharges table created'
 
+CREATE TABLE EventStaff
+(
+StaffID INT IDENTITY,
+StaffType VARCHAR(20) NOT NULL,
+StaffFirstName VARCHAR(20) NOT NULL,
+StaffMiddleName VARCHAR(20) NULL,
+StaffLastName VARCHAR(20) NOT NULL,
+StaffEmail VARCHAR(70) NOT NULL,
+StaffPhone VARCHAR(15) NOT NULL
+
+CONSTRAINT PK_StaffID PRIMARY KEY (StaffID),
+CONSTRAINT CK_StaffTypes CHECK (StaffType IN ('Organizer', 'Admin', 'Employee'))
+)
+
+PRINT 'EventStaff table created.'
+
+CREATE TABLE Series
+(
+SeriesID INT IDENTITY, 
+SeriesTitle VARCHAR(100) NOT NULL,
+StartDate DATE NOT NULL,
+EndDate DATE NULL,
+AdminID INT NOT NULL,
+SeriesDescription VARCHAR(MAX) NULL
+
+CONSTRAINT PK_SeriesID PRIMARY KEY (SeriesID),
+CONSTRAINT FK_Series_EventStaff FOREIGN KEY (AdminID) REFERENCES EventStaff(StaffID)
+)
+
+PRINT 'Series table created.'
+
 /*
 Coming up is another many-to-many relationship to show which members have gone to what events. First the table that contains all of the info
 I was given on the events: the name of the event, the name of the speaker, and when the event happened.
@@ -222,11 +253,13 @@ CREATE TABLE [Events]
 (
 EventID INT IDENTITY(1,1),
 EventTitle VARCHAR(100) NOT NULL,
-SpeakerFirstName VARCHAR(20) NOT NULL,
-SpeakerMiddleName VARCHAR(20) NULL,
-SpeakerLastName VARCHAR(20) NOT NULL,
-EventDate DATE NOT NULL
-CONSTRAINT PK_EventID PRIMARY KEY (EventID)
+SeriesID INT NULL,
+OrganizerID INT NOT NULL,
+EventDate DATE NOT NULL,
+EventDescription VARCHAR(MAX) NULL
+CONSTRAINT PK_EventID PRIMARY KEY (EventID),
+CONSTRAINT FK_Events_Series FOREIGN KEY (SeriesID) REFERENCES Series(SeriesID),
+CONSTRAINT FK_Events_Staff FOREIGN KEY (OrganizerID) REFERENCES EventStaff(StaffID)
 )
 
 PRINT 'Events table created'
@@ -245,6 +278,19 @@ CONSTRAINT FK_MemberEvents_Events FOREIGN KEY (EventID) REFERENCES [Events](Even
 )
 
 PRINT 'MemberEvents table created'
+
+
+CREATE TABLE EventInterests
+(
+EventID INT,
+InterestID INT
+
+CONSTRAINT PK_InterestEventID PRIMARY KEY (EventID, InterestID),
+CONSTRAINT FK_EventInt_Interests FOREIGN KEY (InterestID) REFERENCES Interests(InterestID),
+CONSTRAINT FK_EventInt_Events FOREIGN KEY (EventID) REFERENCES [Events](EventID)
+)
+
+PRINT 'EventInterests table created.'
 
 /*
 I almost kept the member's email in the Members table, but then I realized that I needed it to be separate to fulfill a functional requirement,
@@ -410,14 +456,30 @@ BEGIN
 	END
 
 END
-
+GO
 PRINT 'Expired Card trigger created.'
 
 --UPDATE CardPayment
 --SET ExpirationDate = '02-01-2018'
 --WHERE MemberID = 'M0006'
 
+GO
+CREATE TRIGGER trg_SeriesAdmins
+ON Series
+AFTER INSERT, UPDATE
+AS
+BEGIN
 
+	IF (SELECT StaffType FROM inserted i INNER JOIN EventStaff S ON S.StaffType = i.AdminID) <> 'Admin'
+	BEGIN
+	RAISERROR ('The inserted person for the admin of this series is not registered as a series admin.', 16, 1)
+	ROLLBACK TRAN
+	END
+
+END
+GO
+PRINT 'Series admins trigger created.'
+GO
 --------------------------------------------INSERTS BEGIN HERE--------------------------------------------------
 
 /*
@@ -466,7 +528,7 @@ INSERT Interests (Interest)
 VALUES ('Acting'), ('Video Games'), ('Crossword Puzzles'), ('Calligraphy'), ('Movies'), ('Restaurants'), ('Woodworking'), 
 ('Juggling'), ('Quilting'), ('Electronics'), ('Sewing'), ('Cooking'), ('Botany'), ('Skating'), ('Dancing'), 
 ('Coffee'), ('Foreign Languages'), ('Fashion'), ('Homebrewing'), ('Geneology'), ('Scrapbooking'), ('Surfing'), 
-('Amateur Radio'), ('Computers'), ('Writing'), ('Singing'), ('Reading'), ('Pottery') 
+('Amateur Radio'), ('Computers'), ('Writing'), ('Singing'), ('Reading'), ('Pottery'), ('Pyschology'), ('Ancient History'), ('Modern History')
 GO
 PRINT 'Interests inserts completed'
 GO
@@ -497,13 +559,22 @@ VALUES ( 'M0001', '020 New Castle Way', NULL, 'Port Washington', 'New York', '11
 GO
 PRINT 'Addresses inserts completed'
 GO
+INSERT EventStaff
+VALUES ('Organizer', 'Tiffany', 'Watt', 'Smith', 'wattsup43@gmail.com', '541-555-1235'), 
+('Organizer', 'Simon', NULL, 'Sinek', 'sinkingsimon@trubadello.net', '489-555-1709'), 
+('Organizer', 'Dan', NULL, 'Pink', 'ilovebeingpurple@starpatrick.com', '897-555-5693'), 
+('Organizer', 'Elizabeth', NULL, 'Gilbert', 'gilbeliz52@hotmail.com', '567-867-5309'), 
+('Organizer', 'Andrew', NULL, 'Comeau', 'sqlismybreadandbutter@comeau.net', '678-555-4571') 
+GO
+PRINT 'EventStaff inserts completed.'
+GO
 INSERT [Events]
 VALUES 
-('The History of Human Emotions', 'Tiffany', 'Watt', 'Smith', '01-12-2017'), 
-('How Great Leaders Inspire Action', 'Simon', NULL, 'Sinek', '02-22-2017'), 
-('The Puzzle of Motivation', 'Dan', NULL, 'Pink', '03-05-2017'), 
-('Your Elusive Creative Genius', 'Elizabeth', NULL, 'Gilbert', '04-16-2017'), 
-('Why are Programmers So Smart?', 'Andrew', NULL, 'Comeau', '05-01-2017') 
+('The History of Human Emotions', NULL, 1, '01-12-2017', NULL), 
+('How Great Leaders Inspire Action', NULL, 2, '02-22-2017', NULL), 
+('The Puzzle of Motivation', NULL, 3, '03-05-2017', NULL), 
+('Your Elusive Creative Genius', NULL, 4, '04-16-2017', NULL), 
+('Why are Programmers So Smart?', NULL, 5, '05-01-2017', NULL) 
 GO
 PRINT 'Events inserts completed'
 GO
@@ -518,6 +589,12 @@ VALUES ('M0001', 3), ('M0001', 4), ('M0001', 5), ('M0002', 1), ('M0002', 3), ('M
 ('M0015', 3), ('M0015', 4)
 GO
 PRINT 'MemberEvents inserts completed'
+GO
+INSERT EventInterests
+VALUES (1, 20), (1, 29), (1, 30), (1, 31), (2, 1), (2, 17), (2, 29), (2, 30), (2, 31), (3, 29), (4, 1), (4, 4), (4, 7), (4, 8), (4, 9), (4, 12), 
+(4, 14), (4, 15), (4, 18), (4, 23), (4, 25), (4, 26), (4, 28), (5, 10), (5, 24), (5, 25), (5, 29)
+GO
+PRINT 'EventInterests inserts completed.'
 GO
 INSERT Transactions
 VALUES ( '01-15-2016', 'M0005', 'Approved'), ( '02-15-2016', 'M0005', 'Approved'), 
@@ -1041,3 +1118,83 @@ SELECT CAST(DATEADD(MONTH, DATEDIFF(MONTH, 0, MAX(TransactionDate)), 0) AS DATE)
 
 GO
 
+/*
+1. On your new Members database, create a View that shows the list of all events held to date with the event name, description, organizer name 
+and the number of people who attended.  Sort by event date descending. **Write the view so that it protects the design of the tables and fields 
+it depends on from being changed. **  Test and verify this protection by writing DDL that will change two or more of the field names and 
+remove at least one of the relationships used by the view.  Document the results in comments.
+*/
+--DROP VIEW AllEvents
+
+
+CREATE VIEW AllEvents
+WITH SCHEMABINDING
+AS
+
+SELECT TOP 9000000000000000 EventTitle,  MAX(StaffFirstName) [Organizer First Name], MAX(StaffMiddleName) [Organizer Middle Name], 
+						MAX(StaffLastName) [Organizer Last Name], COUNT(MemberID) [Attendance], MAX(EventDescription) [Event Description]
+FROM dbo.[Events] E
+INNER JOIN dbo.MemberEvents ME
+ON ME.EventID = E.EventID
+INNER JOIN dbo.EventStaff S
+ON S.StaffID = E.OrganizerID
+GROUP BY EventTitle, EventDate
+ORDER BY EventDate DESC
+
+GO
+
+
+
+--EXEC sp_rename 'Events.SpeakerFirstName', 'OrganizerFirstName', 'COLUMN'
+--EXEC sp_rename 'Events.EventDate', 'TimeofEvent', 'COLUMN'
+
+--Errors that arise from those two EXEC commands: 
+--											Object 'Events.SpeakerFirstName' cannot be renamed because the object participates in enforced dependencies.
+--											Object 'Events.EventDate' cannot be renamed because the object participates in enforced dependencies.
+
+--ALTER TABLE MemberEvents
+--DROP CONSTRAINT FK_MemberEvents_Events
+
+--Getting rid of this foreign key constraint that is used in the view was not stopped by WITH SCHEMABINDING.
+
+
+/*
+#2.  On the Members database, create a view that will be used by all employees to view all information on ** current ** individual members with ** 
+paid accounts ** and their address information. Updates will be performed through this view and ** it's important that none of these updates change 
+the data in such a way that the member record is no longer visible through the view **.  Specifically, the member's current status and subscription 
+level need to be protected against accidental changes.
+
+*/
+
+
+CREATE VIEW emp_CurrentMembers
+AS
+
+SELECT M.*, MailAddress, BillAddress, City, [State], ZIPCode
+FROM Members M
+INNER JOIN Addresses A
+ON A.MemberID = M.MemberID
+WHERE [Current] <> 0 AND SubscriptionLevel <> 5
+WITH CHECK OPTION
+GO
+/*
+UPDATE emp_CurrentMembers
+SET SubscriptionLevel = 5
+WHERE MemberID = 'M0001'
+
+UPDATE emp_CurrentMembers
+SET [Current] = 0
+WHERE MemberID = 'M0001'
+*/
+/*
+These two update statements return the following error: "The attempted insert or update failed because the target view either specifies 
+WITH CHECK OPTION or spans a view that specifies WITH CHECK OPTION and one or more rows resulting from the operation did not qualify under 
+the CHECK OPTION constraint", so the information should be safe.
+*/
+
+INSERT EventStaff
+VALUES ('Admin', 'Patrick', 'Lucas', 'McKay', 'mccruiserxd@gmail.com', '207-555-1829')
+SELECT * FROM EventStaff 
+INSERT Series
+VALUES ('The Games We Play', '07-25-2017', '09-24-2017', 6, 'A series of lectures into the different psychological effects of playing various 
+types of games humans play, and how they can affect the physiology of different people.')
