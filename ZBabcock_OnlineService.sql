@@ -1199,28 +1199,35 @@ VALUES ('Admin', 'Patrick', 'Lucas', 'McKay', 'mccruiserxd@gmail.com', '207-555-
 ,('Organizer', 'Troy', NULL, 'Yetter', '54dovesinthesea@scott.co.uk', '02-44-122-2145')
 ,('Organizer', 'Irving', 'Leonard', 'Finkel', 'ifinkel@britishmuseum.org', '423-555-1890')
 ,('Admin', 'Keith', NULL, 'Plunkett', 'sillystringwrestler@netscape.net', '623-555-7482')
---SELECT * FROM Events
+,('Organizer', 'Trisha', 'Nicole', 'Valencian', 'tvalenc99@gmail.com', '542-555-1423')
+,('Organizer', 'Jennifer', NULL, 'Ciris', 'pittsinpits@outlook.com', '891-555-5481')
+
 INSERT Series
-VALUES ('The Games We Play', '07-25-2017', '09-24-2017', 6, 'A series of lectures into the different psychological effects of playing various 
-types of games humans play, and how they can affect the physiology of different people.'), 
-('The Secrets of Your Home', '12-20-2017', NULL, 10, 'A series of lectures that cover ')
+VALUES ('The Games We Play', '07-25-2017', '09-24-2017', 6, 'A series of lectures into the different psychological effects of playing various types of games humans play, and how they can affect the physiology of different people.')
+INSERT Series
+VALUES ('The Secrets of Your Home', '12-20-2017', NULL, 10, 'A series of lectures that cover different aspects of maintaining a house that many overlook, and clever tricks to make maintaining a house much easier.')
 
 INSERT [Events]
 VALUES ('"King Me" Kings', 1, 7, '07-25-2017', 'A look into how the game of checkers began, and how its influence over people over the ages has changed how people interact with each other.'), 
 ('From Pixels to (Near) Perfection', 1, 8, '08-11-2017', 'Speaker Troy Yetter broadly covers the history of video games, going into more detail on how and why the first video game came to be, where technology may be going from here, and why we may be going in that direction.'), 
-('The Most Royal Game of Ur', 1, 9, '08-29-2017', 'The renowned Irving Finkel discusses the ancient Egyptian board game, Ur, how it was played, and how it may have affected the culture of ancient Egypt.'), 
+('The Royal Game of Ur', 1, 9, '08-29-2017', 'The renowned Irving Finkel discusses the ancient Egyptian board game, Ur, how it was played, and how it may have affected the culture of ancient Egypt.'), 
 ('Why Do We Play Board Games?', 1, 6, '09-24-2017', 'An in-depth analysis of the different board games that people have made over the ages, the different formats, and most importantly, why we ever made them to begin with.')
-
+,('What' + '''' +'s in Your Walls?', 2, 11, '12-20-2017', 'Speaker Trisha Valencian goes over the different risks that may come from buying older houses, namely what the walls are made of and what may be found inside, and provides efficient solutions to fixing any issues that may arise from them.')
+,('Magic Attics', 2, 10, '01-07-2018', 'Speaker Keith Plunkett covers the many uses of attics that many don' + ''''+ 't consider, how you can physically expand upon them, and how they could potentially save your life.')
+,('Furthering the Art of Feng Shui', 2, 12, '01-25-2018', 'Speaker Jennifer Ciris tells of the benefits of feng shui and how detrimental home life can be without proper planning on the setup of your living arrangements.')
 INSERT EventInterests
 VALUES (6, 29), (6, 30), (6, 31), (6, 32), (7, 2), (7, 10), (7, 24), (7, 29), (7, 31), (8, 17), (8, 29), (8, 30), (8, 32), (9, 29), (9, 30), (9, 31), 
-(9, 32)
+(9, 32), (10, 7), (10, 12), (11, 5), (11, 7), (11, 13), (11, 23), (11, 24), (11, 25), (12, 7), (12, 9), (12, 11), (12, 18), (12, 29)
 
 INSERT MemberEvents
 VALUES ('M0001', 6), ('M0003', 6), ('M0006', 6), ('M0007', 6), ('M0010', 6), ('M0011', 6), ('M0013', 6), ('M0014', 6), ('M0001', 7), ('M0003', 7), 
 ('M0005', 7), ('M0008', 7), ('M0010', 7),('M0011', 7), ('M0013', 7), ('M0001', 8), ('M0002', 8), ('M0003', 8), ('M0006', 8), ('M0008', 8), ('M0010', 8), 
-('M0011', 8), ('M0013', 8), ('M0014', 8), ('M0001', 9), ('M0002', 9), ('M0004', 9), ('M0008', 9), ('M0010', 9), ('M0012', 9), ('M0013', 9), ('M0014', 9) 
-
+('M0011', 8), ('M0013', 8), ('M0014', 8), ('M0001', 9), ('M0002', 9), ('M0004', 9), ('M0008', 9), ('M0010', 9), ('M0012', 9), ('M0013', 9), ('M0014', 9),
+('M0002', 10), ('M0003', 10), ('M0004', 10), ('M0006', 10), ('M0008', 10), ('M0010', 10), ('M0011', 10), ('M0014', 10), ('M0003', 11), ('M0006', 11), 
+('M0007', 11), ('M0010', 11), ('M0011', 11), ('M0012', 11), ('M0013', 11), ('M0003', 12), ('M0004', 12), ('M0006', 12), ('M0007', 12), ('M0008', 12), ('M0011', 12), 
+('M0013', 12), ('M0014', 12)
 --SELECT EventID, COUNT(MemberID) FROM MemberEvents GROUP BY EventID
 --SELECT * FROM [Events]
 --SELECT * FROM Interests ORDER BY InterestID
 --SELECT M.MemberID, I.* FROM MemberInterests M INNER JOIN Interests I ON I.InterestID = M.InterestID
+
