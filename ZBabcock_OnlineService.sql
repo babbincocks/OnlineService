@@ -470,7 +470,7 @@ AFTER INSERT, UPDATE
 AS
 BEGIN
 
-	IF (SELECT StaffType FROM inserted i INNER JOIN EventStaff S ON S.StaffType = i.AdminID) <> 'Admin'
+	IF (SELECT AdminID FROM inserted i ) NOT IN (SELECT StaffID FROM EventStaff WHERE StaffType = 'Admin')
 	BEGIN
 	RAISERROR ('The inserted person for the admin of this series is not registered as a series admin.', 16, 1)
 	ROLLBACK TRAN
@@ -528,7 +528,8 @@ INSERT Interests (Interest)
 VALUES ('Acting'), ('Video Games'), ('Crossword Puzzles'), ('Calligraphy'), ('Movies'), ('Restaurants'), ('Woodworking'), 
 ('Juggling'), ('Quilting'), ('Electronics'), ('Sewing'), ('Cooking'), ('Botany'), ('Skating'), ('Dancing'), 
 ('Coffee'), ('Foreign Languages'), ('Fashion'), ('Homebrewing'), ('Geneology'), ('Scrapbooking'), ('Surfing'), 
-('Amateur Radio'), ('Computers'), ('Writing'), ('Singing'), ('Reading'), ('Pottery'), ('Pyschology'), ('Ancient History'), ('Modern History')
+('Amateur Radio'), ('Computers'), ('Writing'), ('Singing'), ('Reading'), ('Pottery'), ('Pyschology'), ('Ancient History'), ('Modern History'), 
+('Board Games')
 GO
 PRINT 'Interests inserts completed'
 GO
@@ -1194,7 +1195,32 @@ the CHECK OPTION constraint", so the information should be safe.
 
 INSERT EventStaff
 VALUES ('Admin', 'Patrick', 'Lucas', 'McKay', 'mccruiserxd@gmail.com', '207-555-1829')
-SELECT * FROM EventStaff 
+,('Organizer', 'Rebecca', NULL, 'Boyce', 'oboyceherewego@yahoo.com', '462-555-5234')
+,('Organizer', 'Troy', NULL, 'Yetter', '54dovesinthesea@scott.co.uk', '02-44-122-2145')
+,('Organizer', 'Irving', 'Leonard', 'Finkel', 'ifinkel@britishmuseum.org', '423-555-1890')
+,('Admin', 'Keith', NULL, 'Plunkett', 'sillystringwrestler@netscape.net', '623-555-7482')
+--SELECT * FROM Events
 INSERT Series
 VALUES ('The Games We Play', '07-25-2017', '09-24-2017', 6, 'A series of lectures into the different psychological effects of playing various 
-types of games humans play, and how they can affect the physiology of different people.')
+types of games humans play, and how they can affect the physiology of different people.'), 
+('The Secrets of Your Home', '12-20-2017', NULL, 10, 'A series of lectures that cover ')
+
+INSERT [Events]
+VALUES ('"King Me" Kings', 1, 7, '07-25-2017', 'A look into how the game of checkers began, and how its influence over people over the ages has changed how people interact with each other.'), 
+('From Pixels to (Near) Perfection', 1, 8, '08-11-2017', 'Speaker Troy Yetter broadly covers the history of video games, going into more detail on how and why the first video game came to be, where technology may be going from here, and why we may be going in that direction.'), 
+('The Most Royal Game of Ur', 1, 9, '08-29-2017', 'The renowned Irving Finkel discusses the ancient Egyptian board game, Ur, how it was played, and how it may have affected the culture of ancient Egypt.'), 
+('Why Do We Play Board Games?', 1, 6, '09-24-2017', 'An in-depth analysis of the different board games that people have made over the ages, the different formats, and most importantly, why we ever made them to begin with.')
+
+INSERT EventInterests
+VALUES (6, 29), (6, 30), (6, 31), (6, 32), (7, 2), (7, 10), (7, 24), (7, 29), (7, 31), (8, 17), (8, 29), (8, 30), (8, 32), (9, 29), (9, 30), (9, 31), 
+(9, 32)
+
+INSERT MemberEvents
+VALUES ('M0001', 6), ('M0003', 6), ('M0006', 6), ('M0007', 6), ('M0010', 6), ('M0011', 6), ('M0013', 6), ('M0014', 6), ('M0001', 7), ('M0003', 7), 
+('M0005', 7), ('M0008', 7), ('M0010', 7),('M0011', 7), ('M0013', 7), ('M0001', 8), ('M0002', 8), ('M0003', 8), ('M0006', 8), ('M0008', 8), ('M0010', 8), 
+('M0011', 8), ('M0013', 8), ('M0014', 8), ('M0001', 9), ('M0002', 9), ('M0004', 9), ('M0008', 9), ('M0010', 9), ('M0012', 9), ('M0013', 9), ('M0014', 9) 
+
+--SELECT EventID, COUNT(MemberID) FROM MemberEvents GROUP BY EventID
+--SELECT * FROM [Events]
+--SELECT * FROM Interests ORDER BY InterestID
+--SELECT M.MemberID, I.* FROM MemberInterests M INNER JOIN Interests I ON I.InterestID = M.InterestID
